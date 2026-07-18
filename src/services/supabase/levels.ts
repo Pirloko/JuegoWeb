@@ -1,5 +1,9 @@
 import { getSupabase } from '@/services/supabase/client';
-import { localLevelImageUrl, resolveLevelImageUrl } from '@/services/supabase/storage';
+import {
+  localLevelImageUrl,
+  resolveLevelImageUrl,
+  resolvePlayableLevelImageUrl,
+} from '@/services/supabase/storage';
 import { fetchActiveSeason, hasSeasonPass } from '@/services/supabase/seasons';
 import type {
   GalleryItem,
@@ -92,7 +96,7 @@ export async function fetchPlayableLevel(
     };
   }
 
-  const imageUrl = await resolveLevelImageUrl(row.image_path, row.sort_order);
+  const imageUrl = await resolvePlayableLevelImageUrl(row.image_path, row.sort_order);
 
   return {
     level: row,

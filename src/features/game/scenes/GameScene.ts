@@ -48,14 +48,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // Signed URLs de Supabase son cross-origin; sin esto la textura falla en silencio.
     this.load.setCORS('anonymous');
-    this.load.image(LEVEL_IMAGE_KEY, this.level.imageUrl);
+    // Si la imagen falla (404/CORS), el loader debe seguir y create() usa degradado.
+    this.load.on('loaderror', () => {
+      /* no-op: create() genera textura de respaldo */
+    });
+    const url = this.level.imageUrl?.trim();
+    // URL vacía rompe el loader de Phaser (la escena nunca arranca).
+    if (url) {
+      this.load.image(LEVEL_IMAGE_KEY, url);
+    }
   }
 
   create(): void {
-    // Fallback si la imagen no cargó (sin red, URL rota): degradado generado.
-    // El gameplay nunca depende de que la imagen exista.
+    // Fallback si no hay URL o la imagen no cargó: degradado generado.
     if (!this.textures.exists(LEVEL_IMAGE_KEY)) {
       const g = this.make.graphics({}, false);
       g.fillGradientStyle(0x1e1b4b, 0x7c3aed, 0x7c3aed, 0xf472b6, 1);
