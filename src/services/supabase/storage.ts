@@ -6,18 +6,21 @@ const SIGNED_TTL_SEC = 60 * 60;
 
 /**
  * URL firmada para un path del bucket privado.
- * Devuelve null si no hay permiso (RLS) o el objeto no existe.
+ * Devuelve null si no hay permiso (RLS).
  */
 export async function createSignedImageUrl(path: string): Promise<string | null> {
   const { data, error } = await getSupabase().storage
     .from(BUCKET)
     .createSignedUrl(path, SIGNED_TTL_SEC);
 
-  if (error || !data?.signedUrl) return null;
+  if (error || !data?.signedUrl) {
+    if (error) console.warn('[storage] signedUrl', path, error.message);
+    return null;
+  }
   return data.signedUrl;
 }
 
-/** Fallback local mientras no hay archivo en Storage (dev / pre-upload). */
+/** Fallback local solo en desarrollo (PNG de demo del repo). */
 export function localLevelImageUrl(sortOrder: number): string {
   return `/levels/level-${sortOrder}.png`;
 }
@@ -25,55 +28,77 @@ export function localLevelImageUrl(sortOrder: number): string {
 function candidatePaths(imagePath: string, sortOrder: number): string[] {
   const isThumb = /thumb/i.test(imagePath);
   const base = `level-${sortOrder}/${isThumb ? 'thumb' : 'full'}`;
+  // WebP primero: es lo que genera el admin al comprimir.
   const list = [
-    imagePath,
-    imagePath.replace(/\.png$/i, '.webp'),
-    imagePath.replace(/\.webp$/i, '.png'),
-    imagePath.replace(/\.jpe?g$/i, '.webp'),
+    imagePath.replace(/\.png$/i, '.webp').replace(/\.jpe?g$/i, '.webp'),
     `${base}.webp`,
+    imagePath,
     `${base}.png`,
+    imagePath.replace(/\.webp$/i, '.png'),
   ];
   return [...new Set(list.filter(Boolean))];
 }
 
-/** Comprueba que la URL firmada realmente sirve la imagen (no 404). */
-async function probeSignedUrl(url: string): Promise<boolean> {
-  try {
-    const res = await fetch(url, { method: 'GET', mode: 'cors' });
-    if (!res.ok) return false;
-    const type = res.headers.get('content-type') ?? '';
-    return type.startsWith('image/') || type.includes('octet-stream');
-  } catch {
-    return false;
-  }
+/** Comprueba con <img> (más fiable que fetch ante CORS de Storage). */
+function probeWithImage(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    const timer = window.setTimeout(() => {
+      img.src = '';
+      resolve(false);
+    }, 8000);
+    img.onload = () => {
+      window.clearTimeout(timer);
+      resolve(true);
+    };
+    img.onerror = () => {
+      window.clearTimeout(timer);
+      resolve(false);
+    };
+    img.src = url;
+  });
+}
+
+function isLocalDev(): boolean {
+  return typeof window !== 'undefined' && /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
 }
 
 /**
- * Resuelve la mejor URL de imagen de nivel:
- * 1) signed URL del path en DB (y variantes .webp/.png)
- * 2) fallback local solo en desarrollo
+ * Resuelve la URL de imagen del nivel desde Storage.
+ * Nunca usa el PNG de demo en producción (evita “foto por defecto” engañosa).
  */
 export async function resolveLevelImageUrl(
   imagePath: string,
   sortOrder: number,
 ): Promise<string> {
-  for (const path of candidatePaths(imagePath, sortOrder)) {
+  const candidates = candidatePaths(imagePath, sortOrder);
+  let firstSigned: string | null = null;
+
+  for (const path of candidates) {
     const signed = await createSignedImageUrl(path);
     if (!signed) continue;
-    if (await probeSignedUrl(signed)) {
+    if (!firstSigned) firstSigned = signed;
+
+    if (await probeWithImage(signed)) {
       return signed;
     }
   }
 
-  const local = localLevelImageUrl(sortOrder);
-  // En producción no enmascarar el fallo con un PNG de demo.
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    console.warn(
-      `[storage] Sin imagen en Storage para ${imagePath}; usando fallback local ${local}`,
-    );
+  // Si hubo URL firmada pero el probe falló, igual la usamos (Phaser + CORS).
+  // Mejor foto rota/gradiente que el PNG de demo del repo.
+  if (firstSigned) {
+    console.warn('[storage] Usando signed URL sin probe OK:', imagePath);
+    return firstSigned;
+  }
+
+  if (isLocalDev()) {
+    const local = localLevelImageUrl(sortOrder);
+    console.warn(`[storage] Sin Storage para ${imagePath}; fallback local ${local}`);
     return local;
   }
 
-  console.error(`[storage] No se pudo cargar imagen de nivel: ${imagePath}`);
-  return local;
+  console.error(`[storage] No hay imagen de Storage para ${imagePath} (nivel ${sortOrder})`);
+  // Cadena vacía → Phaser no carga textura → degradado en GameScene (no demo).
+  return '';
 }
