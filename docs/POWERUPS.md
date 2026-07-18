@@ -40,12 +40,19 @@ radio eliminados/dañados según params → enemigos fuera intactos →
 'game:progress' actualizado → FX (onda expansiva, shake, sonido opcional).
 ```
 
-Detalles:
+Detalles (decisiones tomadas en la FASE 5):
 - La conquista por bomba reutiliza `TerritorySystem.conquerCells(cells)` —
   no duplica lógica de revelado ni de porcentaje.
-- Si la explosión corta el trail activo del jugador, el trail sobreviviente
-  se reancla o se cancela sin pérdida de vida (decidir en Fase 5 probándolo).
-- Radio, daño y duración de FX vienen del config; nada hardcodeado.
+- **Trail activo**: la explosión solo conquista celdas libres; el trail
+  sobrevive intacto y el jugador puede seguir su ruta (cubierto por test).
+- **Sin resolución de regiones tras la bomba**: si la explosión deja un
+  pocket libre sin enemigos, no se auto-conquista — el jugador debe
+  trazarlo (mantiene la mecánica central como protagonista).
+- Los enemigos cuya celda quede conquistada por el blast (sin morir) se
+  recolocan a la celda libre más cercana.
+- El spawn elige celda libre aleatoria, lejos del jugador (≥6 celdas) y sin
+  otro power-up encima; `spawn.max` limita el total por nivel.
+- Radio y cadencia vienen del config del nivel; nada hardcodeado.
 
 ## Catálogo futuro (una fase por power-up, bajo demanda)
 

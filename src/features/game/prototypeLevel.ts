@@ -9,5 +9,6 @@ export const PROTOTYPE_LEVEL: LevelConfig = {
   lives: 3,
   playerSpeed: 280,
   enemies: [{ type: 'basic', speed: 200 }],
+  powerUps: [{ type: 'bomb', spawn: { delayMs: 8000, max: 2 }, params: { radiusCells: 10 } }],
   imageUrl: '/levels/level-1.png',
 };

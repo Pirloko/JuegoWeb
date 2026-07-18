@@ -4,6 +4,7 @@ import { BORDER_CELLS, CELL, COLS, GAME_HEIGHT, GAME_WIDTH, ROWS } from '../core
 import { gameEvents } from '../core/GameEvents';
 import { CellState, TerritorySystem, type Cell } from '../systems/TerritorySystem';
 import { RevealSystem } from '../systems/RevealSystem';
+import { PowerUpSystem } from '../systems/PowerUpSystem';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { VirtualJoystick } from '../input/VirtualJoystick';
@@ -23,6 +24,7 @@ export class GameScene extends Phaser.Scene {
   private reveal!: RevealSystem;
   private player!: Player;
   private enemies: Enemy[] = [];
+  private powerUps!: PowerUpSystem;
   private joystick!: VirtualJoystick;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private wasd?: Record<'W' | 'A' | 'S' | 'D', Phaser.Input.Keyboard.Key>;
@@ -69,6 +71,12 @@ export class GameScene extends Phaser.Scene {
       this.enemies.push(new Enemy(this, GAME_WIDTH * fx, GAME_HEIGHT * fy, enemyConfig.speed, stateAtPixel));
     });
 
+    this.powerUps = new PowerUpSystem(this, this.level.powerUps, {
+      territory: this.territory,
+      getPlayerCell: () => this.cellOf(this.player.x, this.player.y),
+      onBombPicked: (cell, radiusCells) => this.explodeBomb(cell, radiusCells),
+    });
+
     this.joystick = new VirtualJoystick(this);
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.wasd = this.input.keyboard?.addKeys('W,A,S,D') as typeof this.wasd;
@@ -92,6 +100,69 @@ export class GameScene extends Phaser.Scene {
 
     for (const enemy of this.enemies) enemy.update(delta);
     this.checkEnemyCollisions(time);
+    if (this.finished) return;
+    this.powerUps.update(this.player.x, this.player.y);
+  }
+
+  // ── Power-ups ────────────────────────────────────────────────────────
+
+  /**
+   * Bomba: conquista (y revela) las celdas libres del radio — el trail
+   * activo sobrevive — y elimina a los enemigos dentro de la onda.
+   */
+  private explodeBomb(cell: Cell, radiusCells: number): void {
+    const centerX = (cell.col + 0.5) * CELL;
+    const centerY = (cell.row + 0.5) * CELL;
+    const blastRadiusPx = radiusCells * CELL;
+
+    this.explosionFx(centerX, centerY, blastRadiusPx);
+
+    const { conquered, pct } = this.territory.conquerCells(
+      this.territory.cellsInRadius(cell, radiusCells),
+    );
+    for (const conqueredCell of conquered) {
+      this.reveal.setCellState(conqueredCell.col, conqueredCell.row, CellState.Conquered);
+    }
+
+    this.enemies = this.enemies.filter((enemy) => {
+      const hit =
+        Phaser.Math.Distance.Between(enemy.x, enemy.y, centerX, centerY) <=
+        blastRadiusPx + enemy.radius;
+      if (hit) {
+        this.tweens.add({
+          targets: enemy,
+          scale: 0,
+          alpha: 0,
+          duration: 250,
+          onComplete: () => enemy.destroy(),
+        });
+      }
+      return !hit;
+    });
+    this.relocateTrappedEnemies();
+
+    gameEvents.emit('game:progress', { conqueredPct: pct });
+    if (pct >= this.level.targetPct) this.finish(true);
+  }
+
+  private explosionFx(x: number, y: number, radiusPx: number): void {
+    this.cameras.main.shake(200, 0.012);
+    const flash = this.add.circle(x, y, radiusPx, 0xfde68a, 0.35).setDepth(20);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 350,
+      onComplete: () => flash.destroy(),
+    });
+    const ring = this.add.circle(x, y, 12).setStrokeStyle(6, 0xfbbf24, 1).setDepth(21);
+    this.tweens.add({
+      targets: ring,
+      radius: radiusPx,
+      alpha: 0,
+      duration: 400,
+      ease: 'Cubic.easeOut',
+      onComplete: () => ring.destroy(),
+    });
   }
 
   // ── Input ────────────────────────────────────────────────────────────
@@ -231,6 +302,7 @@ export class GameScene extends Phaser.Scene {
 
   private finish(won: boolean): void {
     this.finished = true;
+    this.powerUps.stop();
     const stats: LevelResultStats = {
       conqueredPct: this.territory.conqueredPct,
       targetPct: this.level.targetPct,

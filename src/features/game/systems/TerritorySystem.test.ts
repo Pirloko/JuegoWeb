@@ -153,6 +153,48 @@ describe('cierre de regiones', () => {
   });
 });
 
+describe('conquista directa (bomba)', () => {
+  it('bomba sobre trail activo: el trail sobrevive, solo cae lo libre', () => {
+    const t = makeTerritory();
+    t.markTrail({ col: 10, row: 10 });
+    t.markTrail({ col: 10, row: 11 });
+    const { conquered } = t.conquerCells(t.cellsInRadius({ col: 10, row: 10 }, 2));
+    expect(t.stateAt(10, 10)).toBe(CellState.Trail);
+    expect(t.stateAt(10, 11)).toBe(CellState.Trail);
+    expect(t.stateAt(11, 10)).toBe(CellState.Conquered);
+    expect(t.hasTrail).toBe(true);
+    expect(conquered.some((c) => c.col === 10 && c.row === 10)).toBe(false);
+  });
+
+  it('el porcentaje usa el mismo pipeline que closeTrail', () => {
+    const t = makeTerritory();
+    const { conquered, pct } = t.conquerCells(t.cellsInRadius({ col: 10, row: 10 }, 3));
+    expect(conquered.length).toBeGreaterThan(0);
+    expect(pct).toBeCloseTo((conquered.length / INTERIOR) * 100, 10);
+  });
+
+  it('celdas ya conquistadas (borde) no se recuentan', () => {
+    const t = makeTerritory();
+    // Radio que pisa el borde conquistado: solo las libres cuentan.
+    const cells = t.cellsInRadius({ col: 2, row: 2 }, 3);
+    const freeBefore = cells.filter((c) => t.stateAt(c.col, c.row) === CellState.Free).length;
+    const { conquered, pct } = t.conquerCells(cells);
+    expect(conquered).toHaveLength(freeBefore);
+    expect(pct).toBeCloseTo((freeBefore / INTERIOR) * 100, 10);
+  });
+
+  it('cellsInRadius: círculo euclídeo recortado al grid', () => {
+    const t = makeTerritory();
+    const corner = t.cellsInRadius({ col: 0, row: 0 }, 3);
+    expect(corner.every((c) => c.col >= 0 && c.row >= 0)).toBe(true);
+
+    const full = t.cellsInRadius({ col: 10, row: 10 }, 2);
+    expect(full).toHaveLength(13); // dc²+dr² ≤ 4
+    expect(full).toContainEqual({ col: 12, row: 10 });
+    expect(full).not.toContainEqual({ col: 12, row: 12 }); // 8 > 4: esquina fuera
+  });
+});
+
 describe('anclaje del enemigo al cierre (nearestFreeCell)', () => {
   it('enemigo con centro en celda conquistada: su región sobrevive igualmente', () => {
     const t = makeTerritory();

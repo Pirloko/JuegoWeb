@@ -5,10 +5,10 @@ Arcade tipo Qix/Gals Panic: React (shell) + Phaser 3 (gameplay) + TypeScript
 
 ## Estado
 
-Fase 4 completada (revelado de imagen: RevealSystem con capa de cobertura
-perforada por celda conquistada, imagen por nivel vía config.imageUrl con
-fallback offline, revelado completo al ganar, cache runtime de imágenes en
-el SW). Siguiente: Fase 5 (power-up bomba).
+Fase 5 completada (power-up bomba: PowerUpSystem con spawn por config,
+recogida por proximidad, explosión radial que conquista/revela celdas libres
+—el trail sobrevive—, elimina enemigos en el radio y actualiza el progreso).
+Siguiente: Fase 6 (arquitectura genérica de power-ups por registro de efectos).
 El roadmap y el alcance congelado están en `docs/ROADMAP.md`.
 
 ## Comandos

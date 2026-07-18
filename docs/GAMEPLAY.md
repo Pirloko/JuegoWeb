@@ -58,7 +58,9 @@ Los marcados con (test) están cubiertos por `TerritorySystem.test.ts`.
 - [x] (test) Enemigo con centro en celda no-libre (o fuera del grid) en el
       instante del cierre → flood-fill anclado a la libre más cercana; y si
       queda atrapado en lo conquistado, la escena lo recoloca.
-- [ ] Power-up bomba explotando sobre trail activo del jugador (FASE 5).
+- [x] (test) Power-up bomba explotando sobre trail activo → el trail
+      sobrevive intacto (conquerCells solo toca celdas libres), sin pérdida
+      de vida.
 - [x] % objetivo alcanzado en mitad de un cierre → victoria una sola vez
       (flag `finished` + corte del update).
 

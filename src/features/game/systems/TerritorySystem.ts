@@ -83,6 +83,38 @@ export class TerritorySystem {
   }
 
   /**
+   * Conquista directa de celdas libres (power-ups como la bomba).
+   * Las celdas de trail y las ya conquistadas se ignoran: si la explosión
+   * toca el trail activo, el trail sobrevive intacto.
+   * Mismo pipeline de porcentaje que closeTrail.
+   */
+  conquerCells(cells: Cell[]): { conquered: Cell[]; pct: number } {
+    const conquered: Cell[] = [];
+    for (const cell of cells) {
+      if (this.stateAt(cell.col, cell.row) !== CellState.Free) continue;
+      this.grid[this.idx(cell.col, cell.row)] = CellState.Conquered;
+      this.conqueredInterior++;
+      conquered.push(cell);
+    }
+    return { conquered, pct: this.conqueredPct };
+  }
+
+  /** Celdas dentro del grid a distancia euclídea ≤ radius del centro. */
+  cellsInRadius(center: Cell, radius: number): Cell[] {
+    const cells: Cell[] = [];
+    const r2 = radius * radius;
+    for (let row = center.row - radius; row <= center.row + radius; row++) {
+      for (let col = center.col - radius; col <= center.col + radius; col++) {
+        if (!this.inBounds(col, row)) continue;
+        const dc = col - center.col;
+        const dr = row - center.row;
+        if (dc * dc + dr * dr <= r2) cells.push({ col, row });
+      }
+    }
+    return cells;
+  }
+
+  /**
    * Celda libre más cercana a la dada (BFS 4-conectado), o null si no hay
    * ninguna dentro del radio. Se usa para anclar el flood-fill cuando el
    * centro de un enemigo cae en una celda no-libre en el instante del cierre.
