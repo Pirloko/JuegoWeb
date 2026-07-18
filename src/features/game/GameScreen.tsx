@@ -4,6 +4,7 @@ import type { LevelConfig, LevelResultStats } from '@/types/level';
 import { completeLevel, fetchPlayableLevel } from '@/services/supabase/levels';
 import { awardBadges } from '@/services/supabase/badges';
 import { createSignedImageUrl } from '@/services/supabase/storage';
+import { endGameSession, startGameSession } from '@/services/supabase/gameSessions';
 import { BADGE_CATALOG, type BadgeId } from '@/features/progression/badgeCatalog';
 import RevealedMedia from '@/components/RevealedMedia';
 import type { LevelMediaType } from '@/types/database';
@@ -47,6 +48,13 @@ export default function GameScreen() {
 
   const savedRef = useRef(false);
   const hadFullscreenRef = useRef(fullscreenService.isActive());
+  const sessionIdRef = useRef<string | null>(null);
+  const sessionStartedAtRef = useRef<number>(0);
+  const sessionClosedRef = useRef(false);
+  const pendingOutcomeRef = useRef<{
+    outcome: 'completed' | 'failed' | 'abandoned';
+    durationMs: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!levelId) {
@@ -100,13 +108,66 @@ export default function GameScreen() {
     };
   }, [levelId]);
 
+  // Abrir sesión al montar partida jugable; cerrar al desmontar si sigue abierta.
   useEffect(() => {
     if (!config || !levelId) return;
+
+    let cancelled = false;
+    sessionClosedRef.current = false;
+    sessionIdRef.current = null;
+    pendingOutcomeRef.current = null;
+    sessionStartedAtRef.current = Date.now();
+
+    void (async () => {
+      const id = await startGameSession(levelId);
+      if (cancelled) {
+        if (id) {
+          const pending = pendingOutcomeRef.current;
+          void endGameSession(
+            id,
+            pending?.outcome ?? 'abandoned',
+            pending?.durationMs ?? Date.now() - sessionStartedAtRef.current,
+          );
+        }
+        return;
+      }
+      sessionIdRef.current = id;
+      const pending = pendingOutcomeRef.current;
+      if (id && pending && !sessionClosedRef.current) {
+        sessionClosedRef.current = true;
+        void endGameSession(id, pending.outcome, pending.durationMs);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      const id = sessionIdRef.current;
+      if (sessionClosedRef.current) return;
+      const ms = Date.now() - sessionStartedAtRef.current;
+      pendingOutcomeRef.current = { outcome: 'abandoned', durationMs: ms };
+      if (!id) return;
+      sessionClosedRef.current = true;
+      void endGameSession(id, 'abandoned', ms);
+    };
+  }, [config, levelId, runId]);
+
+  useEffect(() => {
+    if (!config || !levelId) return;
+
+    const closeSession = (outcome: 'completed' | 'failed', timeMs: number) => {
+      if (sessionClosedRef.current) return;
+      pendingOutcomeRef.current = { outcome, durationMs: timeMs };
+      const id = sessionIdRef.current;
+      if (!id) return;
+      sessionClosedRef.current = true;
+      void endGameSession(id, outcome, timeMs);
+    };
 
     const unsubscribes = [
       gameEvents.on('game:progress', ({ conqueredPct }) => setPct(conqueredPct)),
       gameEvents.on('game:life-lost', ({ livesLeft }) => setLives(livesLeft)),
       gameEvents.on('game:completed', (stats) => {
+        closeSession('completed', stats.timeMs);
         setResult({
           won: true,
           stats,
@@ -117,6 +178,7 @@ export default function GameScreen() {
         });
       }),
       gameEvents.on('game:failed', (stats) => {
+        closeSession('failed', stats.timeMs);
         setResult({
           won: false,
           stats,
@@ -128,7 +190,7 @@ export default function GameScreen() {
       }),
     ];
     return () => unsubscribes.forEach((off) => off());
-  }, [config, levelId]);
+  }, [config, levelId, runId]);
 
   useEffect(() => {
     return fullscreenService.onChange((active) => {

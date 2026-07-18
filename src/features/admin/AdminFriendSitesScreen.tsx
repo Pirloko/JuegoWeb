@@ -140,7 +140,7 @@ export default function AdminFriendSitesScreen() {
       </header>
 
       <div className="admin-toolbar">
-        <Link className="btn-ghost admin-link" to="/admin">
+        <Link className="btn-ghost admin-link" to="/admin/niveles">
           Niveles
         </Link>
         <Link className="btn-ghost admin-link" to="/admin/seasons">

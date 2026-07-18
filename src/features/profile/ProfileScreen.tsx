@@ -1,9 +1,13 @@
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/auth-context';
 import { isAdminUser } from '@/features/admin/isAdmin';
+import { useTutorial } from '@/features/tutorial/TutorialProvider';
+import { fetchMyBadges } from '@/services/supabase/badges';
+import { BADGE_CATALOG, BADGE_ORDER } from '@/features/progression/badgeCatalog';
 import './profile.css';
 
-function RowIcon({ kind }: { kind: 'badges' | 'sub' | 'levels' | 'gallery' | 'admin' | 'logout' }) {
+function RowIcon({ kind }: { kind: 'tutorial' | 'sub' | 'levels' | 'admin' | 'logout' }) {
   const props = {
     width: 22,
     height: 22,
@@ -14,11 +18,12 @@ function RowIcon({ kind }: { kind: 'badges' | 'sub' | 'levels' | 'gallery' | 'ad
     'aria-hidden': true as const,
   };
   switch (kind) {
-    case 'badges':
+    case 'tutorial':
       return (
         <svg {...props}>
-          <circle cx="12" cy="8" r="5" />
-          <path d="M8.5 13 7 21l5-2 5 2-1.5-8" />
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 16v-1.2A2.4 2.4 0 0 0 13.5 12c0-1-.8-1.5-1.5-1.5s-1.5.5-1.5 1.5" />
+          <circle cx="12" cy="8" r="0.8" fill="currentColor" stroke="none" />
         </svg>
       );
     case 'sub':
@@ -34,14 +39,6 @@ function RowIcon({ kind }: { kind: 'badges' | 'sub' | 'levels' | 'gallery' | 'ad
           <rect x="14" y="3" width="7" height="7" rx="1.5" />
           <rect x="3" y="14" width="7" height="7" rx="1.5" />
           <rect x="14" y="14" width="7" height="7" rx="1.5" />
-        </svg>
-      );
-    case 'gallery':
-      return (
-        <svg {...props}>
-          <rect x="3" y="5" width="18" height="14" rx="2" />
-          <circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none" />
-          <path d="m21 16-5.5-5.5L8 18" />
         </svg>
       );
     case 'admin':
@@ -62,12 +59,50 @@ function RowIcon({ kind }: { kind: 'badges' | 'sub' | 'levels' | 'gallery' | 'ad
   }
 }
 
+function formatBadgeDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+}
+
 export default function ProfileScreen() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { openTutorial } = useTutorial();
   const admin = isAdminUser(user);
   const displayName = user?.user_metadata?.username ?? user?.email?.split('@')[0] ?? 'Jugador';
   const email = user?.email ?? '';
+
+  const [earned, setEarned] = useState<Map<string, string>>(new Map());
+  const [badgesLoading, setBadgesLoading] = useState(!admin);
+  const [badgesError, setBadgesError] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const loadBadges = useCallback(async () => {
+    if (admin) return;
+    setBadgesLoading(true);
+    setBadgesError(null);
+    try {
+      const rows = await fetchMyBadges();
+      const map = new Map(rows.map((r) => [r.badge_id, r.awarded_at]));
+      setEarned(map);
+      const firstEarned = BADGE_ORDER.find((id) => map.has(id));
+      setSelectedId(firstEarned ?? BADGE_ORDER[0] ?? null);
+    } catch (e) {
+      setBadgesError(e instanceof Error ? e.message : 'No se pudieron cargar los logros');
+    } finally {
+      setBadgesLoading(false);
+    }
+  }, [admin]);
+
+  useEffect(() => {
+    void loadBadges();
+  }, [loadBadges]);
+
+  const selected = useMemo(() => {
+    if (!selectedId) return null;
+    return BADGE_CATALOG[selectedId as keyof typeof BADGE_CATALOG] ?? null;
+  }, [selectedId]);
+
+  const selectedAt = selectedId ? earned.get(selectedId) : undefined;
 
   return (
     <main className="profile">
@@ -76,7 +111,7 @@ export default function ProfileScreen() {
           type="button"
           className="profile-back"
           aria-label="Volver"
-          onClick={() => navigate('/')}
+          onClick={() => navigate(admin ? '/admin' : '/')}
         >
           <svg
             width="20"
@@ -92,86 +127,164 @@ export default function ProfileScreen() {
         </button>
         <div className="profile-heading">
           <h1 className="profile-title">Perfil</h1>
-          <p className="profile-sub">Tu cuenta y opciones</p>
+          <p className="profile-sub">{admin ? 'Cuenta de administración' : 'Tu cuenta, cachero'}</p>
         </div>
       </header>
 
-      <section className="profile-card">
+      <section className="profile-card" aria-label="Identidad">
+        <div className="profile-card-glow" aria-hidden />
         <div className="profile-avatar" aria-hidden>
-          {displayName.slice(0, 1).toUpperCase()}
+          <span>{displayName.slice(0, 1).toUpperCase()}</span>
         </div>
         <div className="profile-meta">
-          <p className="profile-name">{displayName}</p>
-          <p className="profile-email">{email}</p>
+          <p className="profile-eyebrow">{admin ? 'Admin' : 'Cachero'}</p>
+          <h2 className="profile-name">{displayName}</h2>
+          {email ? <p className="profile-email">{email}</p> : null}
         </div>
+        {!admin && !badgesLoading && !badgesError && (
+          <div className="profile-badge-tally" title="Medallas obtenidas">
+            <strong>
+              {earned.size}
+              <span>/{BADGE_ORDER.length}</span>
+            </strong>
+            <small>medallas</small>
+          </div>
+        )}
       </section>
 
+      {!admin && (
+        <section className="profile-badges" aria-label="Logros">
+          <div className="profile-section-head">
+            <h2>Logros</h2>
+            <p>Tus medallas cacheras</p>
+          </div>
+
+          {badgesLoading && <p className="profile-badges-msg">Cargando medallas…</p>}
+          {badgesError && (
+            <div className="profile-badges-msg">
+              <p className="profile-badges-error">{badgesError}</p>
+              <button type="button" className="btn-ghost" onClick={() => void loadBadges()}>
+                Reintentar
+              </button>
+            </div>
+          )}
+
+          {!badgesLoading && !badgesError && (
+            <>
+              <ul className="profile-badge-grid">
+                {BADGE_ORDER.map((id, index) => {
+                  const def = BADGE_CATALOG[id];
+                  const at = earned.get(id);
+                  const active = selectedId === id;
+                  return (
+                    <li key={id} style={{ '--i': index } as CSSProperties}>
+                      <button
+                        type="button"
+                        className={`profile-badge-chip${at ? ' is-earned' : ''}${active ? ' is-active' : ''}`}
+                        aria-pressed={active}
+                        aria-label={`${def.name}${at ? ', obtenida' : ', pendiente'}`}
+                        onClick={() => setSelectedId(id)}
+                      >
+                        <span className="profile-badge-glyph" aria-hidden>
+                          {def.icon}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              {selected && (
+                <div className={`profile-badge-detail${selectedAt ? ' is-earned' : ''}`}>
+                  <div className="profile-badge-detail-icon" aria-hidden>
+                    {selected.icon}
+                  </div>
+                  <div className="profile-badge-detail-text">
+                    <strong>{selected.name}</strong>
+                    <small>{selectedAt ? selected.earnedPhrase : selected.description}</small>
+                  </div>
+                  <span className="profile-badge-detail-state">
+                    {selectedAt ? formatBadgeDate(selectedAt) : 'Pendiente'}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      )}
+
       <nav className="profile-actions" aria-label="Opciones de perfil">
-        <button type="button" className="profile-row" onClick={() => navigate('/logros')}>
-          <span className="profile-row-icon badges">
-            <RowIcon kind="badges" />
-          </span>
-          <span className="profile-row-text">
-            <strong>Logros</strong>
-            <small>Medallas y conquistas</small>
-          </span>
-          <span className="profile-row-chevron" aria-hidden>
-            ›
-          </span>
-        </button>
+        {admin ? (
+          <>
+            <button type="button" className="profile-row" onClick={() => navigate('/admin')}>
+              <span className="profile-row-icon admin">
+                <RowIcon kind="admin" />
+              </span>
+              <span className="profile-row-text">
+                <strong>Dashboard</strong>
+                <small>Métricas y resumen</small>
+              </span>
+              <span className="profile-row-chevron" aria-hidden>
+                ›
+              </span>
+            </button>
+            <button type="button" className="profile-row" onClick={() => navigate('/admin/niveles')}>
+              <span className="profile-row-icon levels">
+                <RowIcon kind="levels" />
+              </span>
+              <span className="profile-row-text">
+                <strong>Contenido</strong>
+                <small>Temporadas, niveles y sitios</small>
+              </span>
+              <span className="profile-row-chevron" aria-hidden>
+                ›
+              </span>
+            </button>
+            <button
+              type="button"
+              className="profile-row"
+              onClick={() => navigate('/admin/suscripciones')}
+            >
+              <span className="profile-row-icon sub">
+                <RowIcon kind="sub" />
+              </span>
+              <span className="profile-row-text">
+                <strong>Suscripciones</strong>
+                <small>Estados y periodos</small>
+              </span>
+              <span className="profile-row-chevron" aria-hidden>
+                ›
+              </span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="profile-row" onClick={() => openTutorial()}>
+              <span className="profile-row-icon tutorial">
+                <RowIcon kind="tutorial" />
+              </span>
+              <span className="profile-row-text">
+                <strong>Ver tutorial</strong>
+                <small>Cómo se juega, cachero</small>
+              </span>
+              <span className="profile-row-chevron" aria-hidden>
+                ›
+              </span>
+            </button>
 
-        <button type="button" className="profile-row" onClick={() => navigate('/mis-temporadas')}>
-          <span className="profile-row-icon sub">
-            <RowIcon kind="sub" />
-          </span>
-          <span className="profile-row-text">
-            <strong>Mi suscripción</strong>
-            <small>Estado y temporadas</small>
-          </span>
-          <span className="profile-row-chevron" aria-hidden>
-            ›
-          </span>
-        </button>
-
-        <button type="button" className="profile-row" onClick={() => navigate('/levels')}>
-          <span className="profile-row-icon levels">
-            <RowIcon kind="levels" />
-          </span>
-          <span className="profile-row-text">
-            <strong>Ir a niveles</strong>
-            <small>Elige y juega una partida</small>
-          </span>
-          <span className="profile-row-chevron" aria-hidden>
-            ›
-          </span>
-        </button>
-
-        <button type="button" className="profile-row" onClick={() => navigate('/gallery')}>
-          <span className="profile-row-icon gallery">
-            <RowIcon kind="gallery" />
-          </span>
-          <span className="profile-row-text">
-            <strong>Ver galería</strong>
-            <small>Imágenes que ya revelaste</small>
-          </span>
-          <span className="profile-row-chevron" aria-hidden>
-            ›
-          </span>
-        </button>
-
-        {admin && (
-          <button type="button" className="profile-row" onClick={() => navigate('/admin')}>
-            <span className="profile-row-icon admin">
-              <RowIcon kind="admin" />
-            </span>
-            <span className="profile-row-text">
-              <strong>Administración</strong>
-              <small>Temporadas y niveles</small>
-            </span>
-            <span className="profile-row-chevron" aria-hidden>
-              ›
-            </span>
-          </button>
+            <button type="button" className="profile-row" onClick={() => navigate('/mis-temporadas')}>
+              <span className="profile-row-icon sub">
+                <RowIcon kind="sub" />
+              </span>
+              <span className="profile-row-text">
+                <strong>Mi suscripción</strong>
+                <small>Estado y temporadas</small>
+              </span>
+              <span className="profile-row-chevron" aria-hidden>
+                ›
+              </span>
+            </button>
+          </>
         )}
 
         <button

@@ -66,7 +66,7 @@ export default function AdminLevelsScreen() {
   return (
     <main className="admin">
       <header className="admin-header">
-        <Link className="admin-back" to="/">
+        <Link className="admin-back" to="/admin">
           ←
         </Link>
         <h1>Admin · Niveles</h1>

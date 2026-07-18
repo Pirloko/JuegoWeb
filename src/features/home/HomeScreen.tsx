@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/auth-context';
-import { isAdminUser } from '@/features/admin/isAdmin';
 import InstallBanner from '@/components/InstallBanner';
 import BrandLogo from '@/components/BrandLogo';
 import { fetchActiveSeason, hasSeasonPass, seasonPricing } from '@/services/supabase/seasons';
@@ -10,7 +9,7 @@ import { formatClp, FREE_LEVEL_MAX } from '@/types/database';
 import type { SeasonRow } from '@/types/database';
 import './home.css';
 
-function MenuIcon({ kind }: { kind: 'levels' | 'gallery' | 'admin' }) {
+function MenuIcon({ kind }: { kind: 'levels' | 'gallery' }) {
   const props = {
     width: 26,
     height: 26,
@@ -30,19 +29,11 @@ function MenuIcon({ kind }: { kind: 'levels' | 'gallery' | 'admin' }) {
       </svg>
     );
   }
-  if (kind === 'gallery') {
-    return (
-      <svg {...props}>
-        <rect x="3" y="5" width="18" height="14" rx="2" />
-        <circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none" />
-        <path d="m21 16-5.5-5.5L8 18" />
-      </svg>
-    );
-  }
   return (
     <svg {...props}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="8.5" cy="10" r="1.5" fill="currentColor" stroke="none" />
+      <path d="m21 16-5.5-5.5L8 18" />
     </svg>
   );
 }
@@ -83,7 +74,6 @@ function CalendarIcon() {
 export default function HomeScreen() {
   const navigate = useNavigate();
   const { session, user, loading, configured, signOut } = useAuth();
-  const admin = isAdminUser(user);
   const displayName = user?.user_metadata?.username ?? user?.email?.split('@')[0] ?? 'Jugador';
 
   const [season, setSeason] = useState<SeasonRow | null>(null);
@@ -259,20 +249,6 @@ export default function HomeScreen() {
             ›
           </span>
         </button>
-        {admin && (
-          <button type="button" className="home-menu-item" onClick={() => navigate('/admin')}>
-            <span className="home-menu-icon admin">
-              <MenuIcon kind="admin" />
-            </span>
-            <span className="home-menu-text">
-              <strong>Admin</strong>
-              <small>Crear y editar niveles</small>
-            </span>
-            <span className="home-menu-chevron" aria-hidden>
-              ›
-            </span>
-          </button>
-        )}
       </nav>
 
       <InstallBanner />

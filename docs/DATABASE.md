@@ -43,18 +43,31 @@ user_level_progress (
 
 `user_unlocked_images` se deriva de `user_level_progress.status = 'completed'`
 (vista), no es tabla propia — una fila de progreso ya dice qué imagen está
-desbloqueada. `power_up_definitions`, `level_power_ups`, `game_sessions` y
-`user_statistics` **no se crean en v1**: los power-ups viven en
-`levels.config` y las estadísticas se añaden cuando exista una pantalla que
-las muestre.
+desbloqueada. Los power-ups viven en `levels.config`. El tiempo de juego se
+registra en `game_sessions` (migración `00021`) para el dashboard admin.
+
+## Sesiones de juego y dashboard admin
+
+Migraciones `00021_game_sessions.sql` + `00022_admin_dashboard.sql`:
+
+- `game_sessions` — `started_at` / `ended_at` / `duration_ms` / `outcome`
+  (`playing|completed|failed|abandoned`). Jugador INSERT/UPDATE propias;
+  admin SELECT todas. Cierre vía RPC `end_game_session`.
+- `admin_dashboard_stats(p_days)` — SECURITY DEFINER, solo `is_admin()`.
+  Devuelve JSONB: usuarios (total/nuevos/recurrentes/pagados), tiempo de
+  juego, sesiones, niveles completados, intentos, `subs_by_status`.
+- Policies SELECT admin adicionales en `profiles`, `subscriptions`,
+  `user_level_progress` y `game_sessions`.
 
 ## RLS
 
 | Tabla               | SELECT                                                      | INSERT/UPDATE                                                 |
 | ------------------- | ----------------------------------------------------------- | ------------------------------------------------------------- |
-| profiles            | dueño                                                       | dueño (solo su fila)                                          |
+| profiles            | dueño o admin                                               | dueño (solo su fila)                                          |
 | levels              | authenticated (is_active)                                   | nadie (solo service role / SQL admin)                         |
-| user_level_progress | dueño                                                       | **solo vía RPC** (sin policy de escritura directa)            |
+| user_level_progress | dueño o admin                                               | **solo vía RPC** (sin policy de escritura directa)            |
+| game_sessions       | dueño o admin                                               | dueño (INSERT/UPDATE propias); cierre vía `end_game_session`   |
+| subscriptions       | dueño o admin                                               | admin (INSERT/UPDATE); upsert MP vía service role             |
 | user_badges         | dueño                                                       | **solo vía `award_badges()`** (sin escritura directa)         |
 | level_reviews       | propia o admin (listado ajeno solo vía `get_level_reviews`) | propia y solo con el nivel `completed`; DELETE propia o admin |
 

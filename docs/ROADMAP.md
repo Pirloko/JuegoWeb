@@ -37,6 +37,11 @@ media mixta foto/GIF/video, origen del contenido + reseñas) viven en
 sigue sin haber ranking, comparación entre jugadores ni social abierto —
 las reseñas son conversación anclada al contenido revelado, no un muro.
 
+**Admin (post-Fase 11):** shell separado sin gameplay. Dashboard en `/admin`
+con métricas vía `admin_dashboard_stats` + `game_sessions`; contenido en
+`/admin/niveles|seasons|sitios`; suscripciones en `/admin/suscripciones`.
+Admins no acceden a Niveles/Galería/Jugar del jugador.
+
 ## Riesgos técnicos principales
 
 1. **Algoritmo de cierre de regiones** — el corazón del juego; si falla, no

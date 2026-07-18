@@ -211,7 +211,7 @@ export default function AdminLevelEditScreen() {
   return (
     <main className="admin">
       <header className="admin-header">
-        <Link className="admin-back" to="/admin">
+        <Link className="admin-back" to="/admin/niveles">
           ←
         </Link>
         <h1>{isNew ? 'Nuevo nivel' : 'Editar nivel'}</h1>
