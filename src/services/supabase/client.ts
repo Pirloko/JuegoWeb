@@ -2,6 +2,10 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 let client: SupabaseClient | null = null;
 
+export function isSupabaseConfigured(): boolean {
+  return Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+}
+
 /**
  * Cliente Supabase perezoso: la app funciona sin backend hasta la FASE 7.
  * Lanza con mensaje claro si se usa sin configurar el .env.

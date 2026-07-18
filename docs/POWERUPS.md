@@ -19,13 +19,16 @@ src/features/game/powerups/
 ├── PowerUpEffect.ts    # PowerUpContext (capacidades) + interface del efecto
 ├── registry.ts         # tipo → efecto; exhaustivo por compilación
 ├── BombEffect.ts
-└── LightningEffect.ts
+├── LightningEffect.ts
+├── ShieldEffect.ts
+├── FreezeEffect.ts
+├── SpeedEffect.ts
+└── HeartEffect.ts
 ```
-
 - `PowerUpSystem` (systems/): spawn por config y recogida; agnóstico al tipo.
 - `PowerUpContext`: lo único que un efecto conoce de la escena — `territory`,
-  `cell`, `getEnemies()`, `killEnemy()`, `conquer(cells)` (pipeline común:
-  conquista + revela + recoloca + progreso + victoria) y `scene` para FX.
+  `cell`, `getEnemies()`, `killEnemy()`, `conquer(cells)`, `grantShield`,
+  `freezeEnemies`, `boostSpeed`, `addLives` y `scene` para FX.
 - El registro es un mapped type sobre `PowerUpConfig['type']`: declarar un
   tipo nuevo en el union sin registrar su efecto **no compila**.
 - Añadir un power-up = clase de efecto + entrada en el registro + config
@@ -57,15 +60,17 @@ Detalles (decisiones tomadas en la FASE 5):
   otro power-up encima; `spawn.max` limita el total por nivel.
 - Radio y cadencia vienen del config del nivel; nada hardcodeado.
 
-## Catálogo futuro (una fase por power-up, bajo demanda)
+## Catálogo
 
-| Tipo | Efecto | Nota de diseño |
+| Tipo | Efecto | Estado |
 |---|---|---|
-| ~~Rayo~~ ✓ | Elimina al más cercano, encadena hasta `params.targets` | Hecho en FASE 6 (selección testeada) |
-| Escudo | Invulnerable N segundos | El trail sigue siendo vulnerable? → decidir |
-| Imán | Atrae power-ups cercanos | Solo afecta a items, trivial |
-| Congelación | Pausa enemigos N segundos | Estado `frozen` en Enemy base |
-| Velocidad | +X% velocidad jugador N seg | Cuidado con tunneling en el grid |
-| Fuego | Zona de daño temporal | Reusa el sistema de radio de la bomba |
+| Bomba | Conquista radio + mata enemigos en zona | ✓ |
+| Rayo | Elimina al más cercano, encadena hasta `params.targets` | ✓ |
+| Escudo | Invulnerabilidad del cuerpo N ms; **el trail sigue letal** | ✓ |
+| Congelación | Pausa enemigos N ms | ✓ |
+| Velocidad | Multiplicador de velocidad del jugador (cap 1.6×) | ✓ |
+| Corazón | Suma vidas (`params.lives`) | ✓ |
+| Imán | Atrae power-ups cercanos | Pendiente |
+| Fuego | Zona de daño temporal | Pendiente |
 
-Ninguno se implementa "porque sí": cada uno entra cuando un nivel lo usa.
+Ninguno se implementa "porque sí": cada uno se activa en un nivel vía Admin / `levels.config`.

@@ -28,7 +28,50 @@ export interface LightningConfig {
   };
 }
 
-export type PowerUpConfig = BombConfig | LightningConfig;
+export interface ShieldConfig {
+  type: 'shield';
+  spawn: PowerUpSpawnConfig;
+  params: {
+    /** Duración de invulnerabilidad del jugador (ms). El trail sigue siendo letal. */
+    durationMs: number;
+  };
+}
+
+export interface FreezeConfig {
+  type: 'freeze';
+  spawn: PowerUpSpawnConfig;
+  params: {
+    /** Tiempo que los enemigos quedan quietos (ms). */
+    durationMs: number;
+  };
+}
+
+export interface SpeedConfig {
+  type: 'speed';
+  spawn: PowerUpSpawnConfig;
+  params: {
+    /** Multiplicador de velocidad del jugador (p. ej. 1.4). */
+    multiplier: number;
+    durationMs: number;
+  };
+}
+
+export interface HeartConfig {
+  type: 'heart';
+  spawn: PowerUpSpawnConfig;
+  params: {
+    /** Vidas que suma (normalmente 1). */
+    lives: number;
+  };
+}
+
+export type PowerUpConfig =
+  | BombConfig
+  | LightningConfig
+  | ShieldConfig
+  | FreezeConfig
+  | SpeedConfig
+  | HeartConfig;
 
 export interface LevelConfig {
   targetPct: number;

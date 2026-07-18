@@ -1,0 +1,228 @@
+.gallery {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px 20px 20px;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+  gap: 14px;
+}
+
+.gallery-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gallery-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 4px;
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  border: 1px solid var(--line);
+}
+
+.gallery-tab {
+  min-height: 44px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.gallery-tab.is-active {
+  background: var(--grad-cta);
+  color: #080b16;
+}
+
+.gallery-progress {
+  position: relative;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.gallery-progress-bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: inherit;
+  transition: width 0.35s ease;
+}
+
+.gallery-progress span {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  z-index: 1;
+}
+
+.gallery-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.gallery-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 9 / 14;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-panel);
+  cursor: pointer;
+}
+
+.gallery-tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-tile.locked img {
+  filter: blur(14px) brightness(0.4);
+  transform: scale(1.08);
+}
+
+.gallery-veil {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(8, 11, 22, 0.35);
+}
+
+.gallery-lock {
+  width: 22px;
+  height: 22px;
+  border: 2px solid #c4b5fd;
+  border-radius: 5px;
+  position: relative;
+}
+
+.gallery-lock::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: -9px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #c4b5fd;
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+}
+
+.gallery-tile-name,
+.gallery-caption {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.gallery-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 6px 8px;
+  background: linear-gradient(transparent, rgba(8, 11, 22, 0.9));
+  text-align: center;
+}
+
+.gallery-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--ok);
+  color: #080b16;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.gallery-msg {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 36px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.gallery-error {
+  color: var(--danger);
+}
+
+.gallery-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 11, 22, 0.88);
+}
+
+.gallery-viewer-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: min(100%, 360px);
+}
+
+.gallery-viewer-card img {
+  width: 100%;
+  max-height: 65dvh;
+  object-fit: contain;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+.gallery-viewer-card img.is-blurred {
+  filter: blur(18px) brightness(0.5);
+}
+
+.gallery-viewer-card p {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.gallery-viewer-card .btn-cta {
+  width: 100%;
+}

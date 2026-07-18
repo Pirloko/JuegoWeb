@@ -6,6 +6,10 @@ import type { LevelResultStats } from '@/types/level';
  * Contrato documentado en docs/ARCHITECTURE.md.
  */
 export interface GameEventMap {
+  /** React → Phaser */
+  'game:pause': Record<string, never>;
+  'game:resume': Record<string, never>;
+  /** Phaser → React */
   'game:progress': { conqueredPct: number };
   'game:life-lost': { livesLeft: number };
   'game:completed': LevelResultStats;

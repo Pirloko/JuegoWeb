@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"*.{ts,json,md}\" \"docs/*.md\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"*.{ts,json,md}\" \"docs/*.md\"",
+    "upload:images": "node scripts/upload-level-images.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",

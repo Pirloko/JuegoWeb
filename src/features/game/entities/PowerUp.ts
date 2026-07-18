@@ -6,6 +6,10 @@ import type { Cell } from '../systems/TerritorySystem';
 const EMOJI: Record<PowerUpConfig['type'], string> = {
   bomb: '💣',
   lightning: '⚡',
+  shield: '🛡️',
+  freeze: '❄️',
+  speed: '💨',
+  heart: '❤️',
 };
 
 /** Power-up recogible en el mapa. El efecto lo resuelve powerups/registry. */

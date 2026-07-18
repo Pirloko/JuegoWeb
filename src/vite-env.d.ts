@@ -3,6 +3,8 @@
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL?: string;
   readonly VITE_SUPABASE_ANON_KEY?: string;
+  /** Link estático MP (parche). Si está definido, no usa Checkout Pro. */
+  readonly VITE_MERCADOPAGO_PAYMENT_LINK?: string;
 }
 
 interface ImportMeta {

@@ -13,6 +13,7 @@ const MAX_DELTA_MS = 50;
 export class Enemy extends Phaser.GameObjects.Arc {
   private vx: number;
   private vy: number;
+  private frozenUntil = 0;
 
   constructor(
     scene: Phaser.Scene,
@@ -29,7 +30,15 @@ export class Enemy extends Phaser.GameObjects.Arc {
     this.vy = Math.random() < 0.5 ? -component : component;
   }
 
+  freezeUntil(timeMs: number): void {
+    this.frozenUntil = Math.max(this.frozenUntil, timeMs);
+    this.setFillStyle(0x7dd3fc);
+  }
+
   override update(deltaMs: number): void {
+    if (this.scene.time.now < this.frozenUntil) return;
+    if (this.fillColor !== COLORS.enemy) this.setFillStyle(COLORS.enemy);
+
     const dt = Math.min(deltaMs, MAX_DELTA_MS) / 1000;
 
     const nextX = this.x + this.vx * dt;

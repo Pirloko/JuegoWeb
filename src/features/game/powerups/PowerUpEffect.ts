@@ -16,6 +16,14 @@ export interface PowerUpContext {
   killEnemy(enemy: Enemy): void;
   /** Conquista celdas libres + revela + recoloca enemigos + progreso + victoria. */
   conquer(cells: Cell[]): void;
+  /** Invulnerabilidad del cuerpo del jugador; el trail sigue letal. */
+  grantShield(durationMs: number): void;
+  /** Congela a todos los enemigos vivos. */
+  freezeEnemies(durationMs: number): void;
+  /** Multiplicador temporal de velocidad del jugador. */
+  boostSpeed(multiplier: number, durationMs: number): void;
+  /** Suma vidas (emite actualización al HUD). */
+  addLives(amount: number): void;
 }
 
 export interface PowerUpEffect<C extends PowerUpConfig = PowerUpConfig> {

@@ -1,0 +1,194 @@
+.levels {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 16px 20px 20px;
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+  gap: 18px;
+}
+
+.levels-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.levels-progress-pill {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--accent-2);
+}
+
+.levels-grid {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.level-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  aspect-ratio: 1;
+  width: 100%;
+  padding: 10px 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  color: var(--text);
+  cursor: pointer;
+  text-align: center;
+}
+
+.level-tile.unlocked {
+  border-color: rgba(139, 92, 246, 0.55);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2), var(--shadow-card);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.25), transparent 65%),
+    var(--bg-elevated);
+}
+
+.level-tile.completed {
+  border-color: rgba(45, 212, 191, 0.4);
+  background: var(--bg-card);
+}
+
+.level-tile.locked {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.level-tile.gated {
+  opacity: 0.85;
+  border-color: rgba(251, 191, 36, 0.45);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(251, 191, 36, 0.18), transparent 65%),
+    var(--bg-panel);
+  cursor: pointer;
+}
+
+.level-pass-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.levels-pass-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.1);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.levels-pass-list {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.level-tile:disabled {
+  cursor: default;
+}
+
+.level-num {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.level-tile.unlocked .level-num {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.level-tile-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.level-stars {
+  font-size: 0.7rem;
+  letter-spacing: 1px;
+  color: var(--gold);
+}
+
+.level-play-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #080b16;
+  background: var(--grad-cta);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.level-lock-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.level-tile-meta {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+}
+
+.levels-msg {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.levels-error {
+  color: var(--danger);
+}
+
+@media (max-width: 360px) {
+  .levels-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

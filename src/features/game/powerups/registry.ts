@@ -2,6 +2,10 @@ import type { PowerUpConfig } from '@/types/level';
 import type { PowerUpContext, PowerUpEffect } from './PowerUpEffect';
 import { BombEffect } from './BombEffect';
 import { LightningEffect } from './LightningEffect';
+import { ShieldEffect } from './ShieldEffect';
+import { FreezeEffect } from './FreezeEffect';
+import { SpeedEffect } from './SpeedEffect';
+import { HeartEffect } from './HeartEffect';
 
 /**
  * Un efecto por cada tipo declarado en PowerUpConfig: si añades un tipo al
@@ -13,6 +17,10 @@ const registry: {
 } = {
   bomb: new BombEffect(),
   lightning: new LightningEffect(),
+  shield: new ShieldEffect(),
+  freeze: new FreezeEffect(),
+  speed: new SpeedEffect(),
+  heart: new HeartEffect(),
 };
 
 export function applyPowerUp(ctx: PowerUpContext, config: PowerUpConfig): void {

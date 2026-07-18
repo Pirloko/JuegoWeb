@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { LevelConfig } from '@/types/level';
 import { createGame } from './core/GameConfig';
+import { gameEvents } from './core/GameEvents';
 
 interface Props {
   level: LevelConfig;
@@ -15,7 +16,17 @@ export default function GameCanvas({ level, runId }: Props) {
   useEffect(() => {
     if (!containerRef.current) return;
     const game = createGame(containerRef.current, level);
+
+    const offPause = gameEvents.on('game:pause', () => {
+      game.scene.pause('game');
+    });
+    const offResume = gameEvents.on('game:resume', () => {
+      game.scene.resume('game');
+    });
+
     return () => {
+      offPause();
+      offResume();
       game.destroy(true);
     };
   }, [level, runId]);

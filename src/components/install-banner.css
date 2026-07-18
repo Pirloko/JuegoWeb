@@ -1,0 +1,52 @@
+.install-banner {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+  max-width: none;
+  margin: 0;
+}
+
+.install-banner p {
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: var(--text);
+  text-align: center;
+  font-weight: 600;
+}
+
+.install-banner-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.install-banner-actions button {
+  flex: 1;
+  min-height: 48px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  font-family: var(--font-body);
+}
+
+.install-banner-dismiss {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.install-banner-accept {
+  border: none;
+  background: var(--grad-cta);
+  color: #080b16;
+}

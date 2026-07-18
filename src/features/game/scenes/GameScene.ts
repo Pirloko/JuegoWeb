@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { LevelConfig, LevelResultStats } from '@/types/level';
-import { BORDER_CELLS, CELL, COLS, GAME_HEIGHT, GAME_WIDTH, ROWS } from '../core/constants';
+import { BORDER_CELLS, CELL, COLORS, COLS, GAME_HEIGHT, GAME_WIDTH, ROWS } from '../core/constants';
 import { gameEvents } from '../core/GameEvents';
 import { CellState, TerritorySystem, type Cell } from '../systems/TerritorySystem';
 import { RevealSystem } from '../systems/RevealSystem';
@@ -36,6 +36,10 @@ export class GameScene extends Phaser.Scene {
   private lives = 0;
   private startTime = 0;
   private invulnerableUntil = 0;
+  /** Escudo de power-up: protege el cuerpo, no el trail. */
+  private shieldUntil = 0;
+  private speedBoostUntil = 0;
+  private shieldFx?: Phaser.GameObjects.Arc;
   private finished = false;
   private readonly spawnPoint = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - CELL * 1.5 };
 
@@ -94,6 +98,8 @@ export class GameScene extends Phaser.Scene {
     this.player.move(dir, delta);
     if (dir.x !== 0 || dir.y !== 0) this.lastMoveDir = dir;
 
+    this.tickBuffs(time);
+
     const cell = this.cellOf(this.player.x, this.player.y);
     if (cell.col !== this.lastCell.col || cell.row !== this.lastCell.row) {
       this.onCellEnter(cell, time);
@@ -117,7 +123,57 @@ export class GameScene extends Phaser.Scene {
       getEnemies: () => this.enemies,
       killEnemy: (enemy) => this.killEnemy(enemy),
       conquer: (cells) => this.conquerAndReveal(cells),
+      grantShield: (durationMs) => this.grantShield(durationMs),
+      freezeEnemies: (durationMs) => this.freezeEnemies(durationMs),
+      boostSpeed: (multiplier, durationMs) => this.boostSpeed(multiplier, durationMs),
+      addLives: (amount) => this.addLives(amount),
     };
+  }
+
+  private grantShield(durationMs: number): void {
+    this.shieldUntil = Math.max(this.shieldUntil, this.time.now + durationMs);
+    this.ensureShieldFx();
+  }
+
+  private freezeEnemies(durationMs: number): void {
+    const until = this.time.now + durationMs;
+    for (const enemy of this.enemies) enemy.freezeUntil(until);
+  }
+
+  private boostSpeed(multiplier: number, durationMs: number): void {
+    this.speedBoostUntil = Math.max(this.speedBoostUntil, this.time.now + durationMs);
+    this.player.setSpeedMultiplier(multiplier);
+    this.player.setFillStyle(0xfde68a);
+  }
+
+  private addLives(amount: number): void {
+    this.lives += amount;
+    gameEvents.emit('game:life-lost', { livesLeft: this.lives });
+  }
+
+  private tickBuffs(time: number): void {
+    if (time >= this.speedBoostUntil) {
+      this.player.setSpeedMultiplier(1);
+      this.player.setFillStyle(COLORS.player);
+    }
+    if (time < this.shieldUntil) {
+      this.ensureShieldFx();
+      if (this.shieldFx) {
+        this.shieldFx.setPosition(this.player.x, this.player.y);
+      }
+    } else if (this.shieldFx) {
+      this.shieldFx.destroy();
+      this.shieldFx = undefined;
+    }
+  }
+
+  private ensureShieldFx(): void {
+    if (this.shieldFx) return;
+    this.shieldFx = this.add
+      .circle(this.player.x, this.player.y, 22)
+      .setStrokeStyle(3, 0x38bdf8, 0.9)
+      .setFillStyle(0x38bdf8, 0.12)
+      .setDepth(11);
   }
 
   /** Pipeline común de conquista directa (power-ups). */
@@ -204,7 +260,10 @@ export class GameScene extends Phaser.Scene {
 
   private checkEnemyCollisions(time: number): void {
     const playerState = this.territory.stateAt(this.lastCell.col, this.lastCell.row);
-    const playerExposed = playerState !== CellState.Conquered && time >= this.invulnerableUntil;
+    const bodyProtected =
+      playerState === CellState.Conquered ||
+      time < this.invulnerableUntil ||
+      time < this.shieldUntil;
 
     for (const enemy of this.enemies) {
       if (this.territory.hasTrail) {
@@ -218,13 +277,14 @@ export class GameScene extends Phaser.Scene {
         ];
         for (const [ox, oy] of samples) {
           if (this.stateAtPixel(enemy.x + ox, enemy.y + oy) === CellState.Trail) {
-            this.loseLife(time);
+            // Trail letal siempre: escudo / i-frames no lo protegen.
+            this.loseLife(time, true);
             return;
           }
         }
       }
 
-      if (playerExposed) {
+      if (!bodyProtected) {
         const dx = enemy.x - this.player.x;
         const dy = enemy.y - this.player.y;
         const minDist = enemy.radius + this.player.width / 2;
@@ -251,8 +311,14 @@ export class GameScene extends Phaser.Scene {
 
   private loseLife(time: number, force = false): void {
     if (!force && time < this.invulnerableUntil) return;
+    if (!force && time < this.shieldUntil) return;
 
     this.lives -= 1;
+    this.shieldUntil = 0;
+    if (this.shieldFx) {
+      this.shieldFx.destroy();
+      this.shieldFx = undefined;
+    }
     this.cameras.main.shake(150, 0.008);
     for (const cell of this.territory.clearTrail()) {
       this.reveal.setCellState(cell.col, cell.row, CellState.Free);

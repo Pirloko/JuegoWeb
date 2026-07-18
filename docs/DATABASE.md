@@ -75,6 +75,18 @@ Esto no hace el juego a prueba de balas (el cliente sigue siendo JS), pero
 elimina el desbloqueo trivial por UPDATE directo, que es la amenaza real.
 Anti-cheat más fuerte (replay de inputs en Edge Function) queda fuera de v1.
 
+## Temporadas y pase (negocio)
+
+Migración `00009_seasons_and_entitlements.sql` + `00011_subscriptions.sql`:
+
+- `seasons` — precios CLP, oferta opcional, fechas.
+- `levels.season_id` — unique `(season_id, sort_order)`.
+- `season_entitlements` — acceso legacy / admin (permanente).
+- `subscriptions` — suscripción mensual MP (`authorized` = acceso 8–70).
+- Helpers: `has_season_pass` (sub **o** entitlement), `has_active_subscription`,
+  `upsert_subscription_from_mp`, `grant_season_pass`.
+- `complete_level` scoped a la temporada + gate free (1–7) / pago (8+).
+
 ## Storage
 
 - Bucket `level-images`: imagen completa + thumbnail por nivel.

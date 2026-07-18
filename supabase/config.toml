@@ -1,0 +1,7 @@
+# Edge Functions (deploy con supabase functions deploy)
+
+[functions.create-checkout]
+verify_jwt = true
+
+[functions.mp-webhook]
+verify_jwt = false

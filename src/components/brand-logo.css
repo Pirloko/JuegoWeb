@@ -1,0 +1,35 @@
+.brand-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  line-height: 0;
+}
+
+.brand-logo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  object-fit: contain;
+  /* El PNG trae fondo negro; encaja con --bg-void */
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.brand-logo--sm {
+  width: min(180px, 55vw);
+}
+
+.brand-logo--md {
+  width: min(240px, 70vw);
+}
+
+.brand-logo--lg {
+  width: min(300px, 80vw);
+}
+
+.brand-logo--hero {
+  width: min(340px, 88vw);
+  margin-inline: auto;
+}
