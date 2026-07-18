@@ -4,6 +4,9 @@ import { AuthProvider } from '@/features/auth/AuthProvider';
 import RequireAuth from '@/features/auth/RequireAuth';
 import LoginScreen from '@/features/auth/LoginScreen';
 import RegisterScreen from '@/features/auth/RegisterScreen';
+import AgeGateScreen from '@/features/legal/AgeGateScreen';
+import LegalDocumentScreen from '@/features/legal/LegalDocumentScreen';
+import RequireAgeGate from '@/features/legal/RequireAgeGate';
 import LevelsScreen from '@/features/levels/LevelsScreen';
 import GalleryScreen from '@/features/gallery/GalleryScreen';
 import ProfileScreen from '@/features/profile/ProfileScreen';
@@ -33,8 +36,24 @@ export default function App() {
         <TutorialProvider>
         <OrientationGate />
         <Routes>
-          <Route path="/login" element={<LoginScreen />} />
-          <Route path="/registro" element={<RegisterScreen />} />
+          <Route
+            path="/login"
+            element={
+              <RequireAgeGate>
+                <LoginScreen />
+              </RequireAgeGate>
+            }
+          />
+          <Route
+            path="/registro"
+            element={
+              <RequireAgeGate>
+                <RegisterScreen />
+              </RequireAgeGate>
+            }
+          />
+          <Route path="/aviso-edad" element={<AgeGateScreen />} />
+          <Route path="/legal/:docSlug" element={<LegalDocumentScreen />} />
 
           <Route element={<AppShell />}>
             <Route path="/" element={<HomeOrAdminRedirect />} />

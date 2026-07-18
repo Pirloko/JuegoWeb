@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import BrandLogo from '@/components/BrandLogo';
 import { useAuth } from './auth-context';
+import '../legal/legal.css';
 import './auth.css';
 
 export default function LoginScreen() {
@@ -45,6 +46,7 @@ export default function LoginScreen() {
       <div className="auth-brand">
         <BrandLogo size="md" />
       </div>
+      <p className="auth-age-note">Contenido +18</p>
       <h1>Entrar</h1>
       <p className="auth-lead">Escribe tu email y contraseña para continuar</p>
       <form className="auth-form" onSubmit={onSubmit}>
@@ -80,6 +82,10 @@ export default function LoginScreen() {
       <p className="auth-switch">
         ¿Primera vez? <Link to="/registro">Crear cuenta</Link>
       </p>
+      <nav className="auth-legal-links" aria-label="Legal">
+        <Link to="/legal/terminos">Condiciones</Link>
+        <Link to="/legal/privacidad">Privacidad</Link>
+      </nav>
       <Link className="auth-back" to="/">
         Volver al inicio
       </Link>

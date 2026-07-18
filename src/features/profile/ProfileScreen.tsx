@@ -1,13 +1,20 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/auth-context';
 import { isAdminUser } from '@/features/admin/isAdmin';
 import { useTutorial } from '@/features/tutorial/TutorialProvider';
 import { fetchMyBadges } from '@/services/supabase/badges';
+import { deleteOwnAccount } from '@/services/supabase/account';
 import { BADGE_CATALOG, BADGE_ORDER } from '@/features/progression/badgeCatalog';
+import { MP_MANAGE_SUBSCRIPTION_URL } from '@/types/database';
+import '@/features/legal/legal.css';
 import './profile.css';
 
-function RowIcon({ kind }: { kind: 'tutorial' | 'sub' | 'levels' | 'admin' | 'logout' }) {
+function RowIcon({
+  kind,
+}: {
+  kind: 'tutorial' | 'sub' | 'levels' | 'admin' | 'logout' | 'delete';
+}) {
   const props = {
     width: 22,
     height: 22,
@@ -56,6 +63,15 @@ function RowIcon({ kind }: { kind: 'tutorial' | 'sub' | 'levels' | 'admin' | 'lo
           <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
       );
+    case 'delete':
+      return (
+        <svg {...props}>
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+          <path d="M10 11v6M14 11v6" />
+        </svg>
+      );
   }
 }
 
@@ -75,6 +91,10 @@ export default function ProfileScreen() {
   const [badgesLoading, setBadgesLoading] = useState(!admin);
   const [badgesError, setBadgesError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteText, setDeleteText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const loadBadges = useCallback(async () => {
     if (admin) return;
@@ -103,6 +123,20 @@ export default function ProfileScreen() {
   }, [selectedId]);
 
   const selectedAt = selectedId ? earned.get(selectedId) : undefined;
+  const canConfirmDelete = deleteText.trim().toUpperCase() === 'ELIMINAR';
+
+  async function onDeleteAccount() {
+    if (!canConfirmDelete || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteOwnAccount();
+      navigate('/', { replace: true });
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar la cuenta');
+      setDeleting(false);
+    }
+  }
 
   return (
     <main className="profile">
@@ -303,7 +337,86 @@ export default function ProfileScreen() {
             ›
           </span>
         </button>
+
+        {!admin && (
+          <button
+            type="button"
+            className="profile-row danger"
+            onClick={() => {
+              setConfirmDelete(true);
+              setDeleteText('');
+              setDeleteError(null);
+            }}
+          >
+            <span className="profile-row-icon delete">
+              <RowIcon kind="delete" />
+            </span>
+            <span className="profile-row-text">
+              <strong>Eliminar cuenta</strong>
+              <small>Borra tu perfil y progreso para siempre</small>
+            </span>
+            <span className="profile-row-chevron" aria-hidden>
+              ›
+            </span>
+          </button>
+        )}
       </nav>
+
+      <nav className="profile-legal-links" aria-label="Legal">
+        <Link to="/legal/terminos">Condiciones de uso</Link>
+        <Link to="/legal/privacidad">Política de privacidad</Link>
+      </nav>
+
+      {confirmDelete && (
+        <div className="profile-delete-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-title">
+          <div className="profile-delete-card">
+            <h2 id="delete-title">¿Eliminar tu cuenta?</h2>
+            <p>
+              Esta acción es <strong>permanente</strong>. Se borrarán tu perfil, progreso, medallas y
+              galería. No se puede deshacer.
+            </p>
+            <p>
+              Si tienes una suscripción activa en Mercado Pago,{' '}
+              <a href={MP_MANAGE_SUBSCRIPTION_URL} target="_blank" rel="noopener noreferrer">
+                cancélala allí
+              </a>{' '}
+              para evitar cobros futuros.
+            </p>
+            <label className="profile-delete-field">
+              <span>
+                Escribe <strong>ELIMINAR</strong> para confirmar
+              </span>
+              <input
+                type="text"
+                autoComplete="off"
+                value={deleteText}
+                onChange={(e) => setDeleteText(e.target.value)}
+                placeholder="ELIMINAR"
+                disabled={deleting}
+              />
+            </label>
+            {deleteError && <p className="profile-delete-error">{deleteError}</p>}
+            <div className="profile-delete-actions">
+              <button
+                type="button"
+                className="profile-delete-cancel"
+                disabled={deleting}
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="profile-delete-confirm"
+                disabled={!canConfirmDelete || deleting}
+                onClick={() => void onDeleteAccount()}
+              >
+                {deleting ? 'Eliminando…' : 'Eliminar definitivamente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

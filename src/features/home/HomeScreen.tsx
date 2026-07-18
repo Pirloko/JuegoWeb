@@ -7,6 +7,7 @@ import { fetchActiveSeason, hasSeasonPass, seasonPricing } from '@/services/supa
 import { fetchLevelsWithProgress } from '@/services/supabase/levels';
 import { formatClp, FREE_LEVEL_MAX } from '@/types/database';
 import type { SeasonRow } from '@/types/database';
+import '@/features/legal/legal.css';
 import './home.css';
 
 function MenuIcon({ kind }: { kind: 'levels' | 'gallery' }) {
@@ -132,6 +133,7 @@ export default function HomeScreen() {
           <p className="home-tagline">Conquista el territorio. Revela la imagen oculta.</p>
         </div>
         <div className="home-cta-stack">
+          <p className="home-age-note">Solo para mayores de 18 años · contenido adulto</p>
           <Link className="btn-cta home-cta" to="/login">
             Entrar
           </Link>
@@ -141,6 +143,10 @@ export default function HomeScreen() {
           <p className="home-hint">
             Toca Entrar si ya tienes cuenta. Si es tu primera vez, crea una.
           </p>
+          <nav className="home-legal-links" aria-label="Legal">
+            <Link to="/legal/terminos">Condiciones de uso</Link>
+            <Link to="/legal/privacidad">Privacidad</Link>
+          </nav>
         </div>
       </main>
     );
