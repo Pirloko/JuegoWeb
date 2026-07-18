@@ -1,0 +1,67 @@
+.season-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.season-progress-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.season-progress.is-compact .season-progress-track {
+  height: 7px;
+}
+
+.season-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--grad-cta);
+  transition: width 0.4s ease;
+}
+
+.season-progress-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(238, 240, 255, 0.22);
+}
+
+.season-progress-tick.is-reached {
+  background: rgba(8, 11, 22, 0.45);
+}
+
+.season-progress-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
+.season-progress.is-compact .season-progress-meta {
+  font-size: 0.78rem;
+}
+
+.season-progress-count {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.season-progress-next {
+  font-weight: 600;
+  color: var(--accent-2);
+}
+
+.season-progress-next.is-done {
+  color: var(--gold);
+}

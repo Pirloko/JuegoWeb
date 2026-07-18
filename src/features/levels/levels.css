@@ -17,21 +17,6 @@
   gap: 12px;
 }
 
-.levels-progress-pill {
-  flex-shrink: 0;
-  min-height: 36px;
-  padding: 0 14px;
-  display: flex;
-  align-items: center;
-  border-radius: 999px;
-  border: 1px solid var(--line);
-  background: var(--bg-panel);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--accent-2);
-}
-
 .levels-grid {
   list-style: none;
   display: grid;
@@ -61,10 +46,11 @@
 
 .level-tile.unlocked {
   border-color: rgba(139, 92, 246, 0.55);
-  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.2), var(--shadow-card);
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.2),
+    var(--shadow-card);
   background:
-    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.25), transparent 65%),
-    var(--bg-elevated);
+    radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.25), transparent 65%), var(--bg-elevated);
 }
 
 .level-tile.completed {
@@ -81,8 +67,7 @@
   opacity: 0.85;
   border-color: rgba(251, 191, 36, 0.45);
   background:
-    radial-gradient(circle at 50% 0%, rgba(251, 191, 36, 0.18), transparent 65%),
-    var(--bg-panel);
+    radial-gradient(circle at 50% 0%, rgba(251, 191, 36, 0.18), transparent 65%), var(--bg-panel);
   cursor: pointer;
 }
 
@@ -149,6 +134,25 @@
   font-size: 0.7rem;
   letter-spacing: 1px;
   color: var(--gold);
+}
+
+.level-media-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(8, 11, 22, 0.7);
+  border: 1px solid var(--line-strong);
+  color: var(--accent-2);
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+}
+
+.level-media-dot.video {
+  color: var(--accent-hot);
 }
 
 .level-play-badge {

@@ -157,10 +157,24 @@
 }
 
 .home-season-line {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--accent-2);
+}
+
+.home-season-progress {
+  margin: 0 auto 18px;
+  max-width: 320px;
+  text-align: left;
+}
+
+.home-goal {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--text-muted);
 }
 
 .home-play {

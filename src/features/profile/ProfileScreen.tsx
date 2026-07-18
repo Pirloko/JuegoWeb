@@ -28,6 +28,10 @@ export default function ProfileScreen() {
       </section>
 
       <div className="profile-actions">
+        <button type="button" className="profile-row" onClick={() => navigate('/logros')}>
+          <span>Logros</span>
+          <span aria-hidden>›</span>
+        </button>
         <button type="button" className="profile-row" onClick={() => navigate('/mis-temporadas')}>
           <span>Mi suscripción</span>
           <span aria-hidden>›</span>

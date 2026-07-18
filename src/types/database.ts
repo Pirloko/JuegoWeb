@@ -41,6 +41,9 @@ export interface SubscriptionRow {
 /** Link para que el usuario gestione/cancele en Mercado Pago (Chile). */
 export const MP_MANAGE_SUBSCRIPTION_URL = 'https://www.mercadopago.cl/subscriptions';
 
+/** Tipo del contenido oculto de un nivel. */
+export type LevelMediaType = 'image' | 'gif' | 'video';
+
 /** Fila de public.levels */
 export interface LevelRow {
   id: string;
@@ -50,6 +53,12 @@ export interface LevelRow {
   config: LevelConfigJson;
   image_path: string;
   thumb_path: string;
+  /** Contenido oculto: foto (default), GIF o video corto (≤20 s). */
+  media_type: LevelMediaType;
+  /** Path en Storage del GIF/video; null si media_type = image. */
+  media_path: string | null;
+  /** URL de procedencia del contenido (la define el admin); null si no hay. */
+  source_url: string | null;
   is_active: boolean;
 }
 
@@ -90,6 +99,8 @@ export interface GalleryItem {
   status: ProgressStatus;
   revealed: boolean;
   displayUrl: string;
+  /** Signed URL del GIF/video, solo si está revelado y el nivel es especial. */
+  mediaUrl: string | null;
 }
 
 export function toLevelConfig(level: LevelRow, imageUrl: string): LevelConfig {
@@ -109,7 +120,9 @@ export function isOfferActive(season: SeasonRow, now = new Date()): boolean {
     return false;
   }
   const t = now.getTime();
-  return t >= new Date(season.offer_starts_at).getTime() && t < new Date(season.offer_ends_at).getTime();
+  return (
+    t >= new Date(season.offer_starts_at).getTime() && t < new Date(season.offer_ends_at).getTime()
+  );
 }
 
 export function effectivePriceClp(season: SeasonRow, now = new Date()): number {

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import type { LevelConfigJson, SeasonRow } from '@/types/database';
+import type { LevelConfigJson, LevelMediaType, SeasonRow } from '@/types/database';
 import {
   createLevel,
   defaultLevelConfig,
@@ -10,11 +10,10 @@ import {
   pathsForSortOrder,
   updateLevel,
   uploadLevelImage,
+  uploadLevelMedia,
 } from '@/services/supabase/admin';
-import {
-  formatBytes,
-  prepareLevelImage,
-} from '@/services/images/prepareLevelImage';
+import { formatBytes, prepareLevelImage } from '@/services/images/prepareLevelImage';
+import { prepareLevelMedia } from '@/services/images/prepareLevelMedia';
 import './admin.css';
 
 export default function AdminLevelEditScreen() {
@@ -33,6 +32,10 @@ export default function AdminLevelEditScreen() {
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [existingImagePath, setExistingImagePath] = useState<string | null>(null);
   const [existingThumbPath, setExistingThumbPath] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<LevelMediaType>('image');
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [existingMediaPath, setExistingMediaPath] = useState<string | null>(null);
+  const [sourceUrl, setSourceUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +91,9 @@ export default function AdminLevelEditScreen() {
         setSeasonId(row.season_id);
         setExistingImagePath(row.image_path);
         setExistingThumbPath(row.thumb_path);
+        setMediaType(row.media_type ?? 'image');
+        setExistingMediaPath(row.media_path ?? null);
+        setSourceUrl(row.source_url ?? '');
         setConfig({ ...defaultLevelConfig(), ...row.config });
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Error al cargar');
@@ -113,6 +119,9 @@ export default function AdminLevelEditScreen() {
     try {
       if (!seasonId) throw new Error('Elige una temporada');
       if (!name.trim()) throw new Error('Nombre requerido');
+      if (sourceUrl.trim() && !/^https?:\/\//i.test(sourceUrl.trim())) {
+        throw new Error('El link de origen debe empezar con http(s)://');
+      }
 
       const defaultPaths = pathsForSortOrder(sortOrder);
       const compressNotes: string[] = [];
@@ -140,6 +149,19 @@ export default function AdminLevelEditScreen() {
         thumbPath = await uploadPrepared('thumb', fullFile, defaultPaths.thumb_path);
       }
 
+      let mediaPath = existingMediaPath;
+      if (mediaType === 'image') {
+        mediaPath = null;
+      } else if (mediaFile) {
+        setInfo('Validando media…');
+        const prepared = await prepareLevelMedia(mediaFile, mediaType);
+        mediaPath = `level-${sortOrder}/media.${prepared.ext}`;
+        setInfo('Subiendo media…');
+        await uploadLevelMedia(mediaPath, prepared.file, prepared.contentType);
+      } else if (!mediaPath) {
+        throw new Error(mediaType === 'gif' ? 'Sube el GIF del nivel' : 'Sube el video del nivel');
+      }
+
       const payload = {
         season_id: seasonId,
         name: name.trim(),
@@ -148,6 +170,9 @@ export default function AdminLevelEditScreen() {
         config,
         image_path: imagePath,
         thumb_path: thumbPath,
+        media_type: mediaType,
+        media_path: mediaPath,
+        source_url: sourceUrl.trim() || null,
       };
 
       setInfo('Guardando nivel…');
@@ -155,11 +180,11 @@ export default function AdminLevelEditScreen() {
 
       setExistingImagePath(imagePath);
       setExistingThumbPath(thumbPath);
+      setExistingMediaPath(mediaPath);
       setFullFile(null);
       setThumbFile(null);
-      setInfo(
-        compressNotes.length ? `Guardado · ${compressNotes.join(' · ')}` : 'Guardado',
-      );
+      setMediaFile(null);
+      setInfo(compressNotes.length ? `Guardado · ${compressNotes.join(' · ')}` : 'Guardado');
       if (isNew) {
         navigate(`/admin/levels/${row.id}`, { replace: true });
       }
@@ -213,12 +238,7 @@ export default function AdminLevelEditScreen() {
 
         <label className="admin-field">
           <span>Nombre</span>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            maxLength={80}
-          />
+          <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} />
         </label>
 
         <div className="admin-row-fields">
@@ -486,6 +506,56 @@ export default function AdminLevelEditScreen() {
               onChange={(e) => setThumbFile(e.target.files?.[0] ?? null)}
             />
           </label>
+        </fieldset>
+
+        <fieldset className="admin-fieldset">
+          <legend>Contenido oculto</legend>
+          <label className="admin-field">
+            <span>Tipo</span>
+            <select
+              value={mediaType}
+              onChange={(e) => setMediaType(e.target.value as LevelMediaType)}
+            >
+              <option value="image">Foto</option>
+              <option value="gif">GIF</option>
+              <option value="video">Video (≤20 s)</option>
+            </select>
+          </label>
+          {mediaType !== 'image' && (
+            <>
+              <p className="admin-hint">
+                {mediaType === 'gif'
+                  ? 'GIF de hasta 12 MB.'
+                  : 'MP4/WebM de máximo 20 segundos y 12 MB.'}{' '}
+                La imagen completa de arriba sigue siendo obligatoria: es el poster que se revela
+                durante la partida. Path: level-{sortOrder}/media.*
+              </p>
+              <label className="admin-field">
+                <span>{mediaType === 'gif' ? 'Archivo GIF' : 'Archivo de video'}</span>
+                <input
+                  type="file"
+                  accept={mediaType === 'gif' ? 'image/gif' : 'video/mp4,video/webm'}
+                  onChange={(e) => setMediaFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              {existingMediaPath && !mediaFile && (
+                <p className="admin-hint">Media actual: {existingMediaPath}</p>
+              )}
+            </>
+          )}
+          <label className="admin-field">
+            <span>Link de origen (opcional)</span>
+            <input
+              type="url"
+              inputMode="url"
+              placeholder="https://…"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+            />
+          </label>
+          <p className="admin-hint">
+            De dónde viene el contenido. El jugador podrá visitarlo tras revelarlo.
+          </p>
         </fieldset>
 
         {error && <p className="admin-error">{error}</p>}

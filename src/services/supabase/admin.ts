@@ -1,6 +1,7 @@
 import { getSupabase } from '@/services/supabase/client';
-import type { LevelConfigJson, LevelRow, SeasonRow } from '@/types/database';
+import type { LevelConfigJson, LevelMediaType, LevelRow, SeasonRow } from '@/types/database';
 import { LEVEL_IMAGE_MAX_BYTES } from '@/services/images/prepareLevelImage';
+import { LEVEL_MEDIA_MAX_BYTES } from '@/services/images/prepareLevelMedia';
 
 const BUCKET = 'level-images';
 
@@ -107,6 +108,9 @@ export interface LevelWriteInput {
   config: LevelConfigJson;
   image_path: string;
   thumb_path: string;
+  media_type: LevelMediaType;
+  media_path: string | null;
+  source_url: string | null;
 }
 
 export async function createLevel(input: LevelWriteInput): Promise<LevelRow> {
@@ -138,6 +142,25 @@ export async function uploadLevelImage(
 ): Promise<void> {
   if (file.size > LEVEL_IMAGE_MAX_BYTES) {
     throw new Error(`Imagen demasiado pesada (máx. ${LEVEL_IMAGE_MAX_BYTES / 1024} KB)`);
+  }
+
+  const { error } = await getSupabase().storage.from(BUCKET).upload(path, file, {
+    contentType,
+    upsert: true,
+  });
+  if (error) throw new Error(error.message);
+}
+
+/** Sube el GIF/video especial de un nivel (validado en prepareLevelMedia). */
+export async function uploadLevelMedia(
+  path: string,
+  file: Blob,
+  contentType: string,
+): Promise<void> {
+  if (file.size > LEVEL_MEDIA_MAX_BYTES) {
+    throw new Error(
+      `Media demasiado pesada (máx. ${Math.round(LEVEL_MEDIA_MAX_BYTES / (1024 * 1024))} MB)`,
+    );
   }
 
   const { error } = await getSupabase().storage.from(BUCKET).upload(path, file, {

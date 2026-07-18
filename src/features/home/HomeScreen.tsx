@@ -6,10 +6,11 @@ import InstallBanner from '@/components/InstallBanner';
 import BrandLogo from '@/components/BrandLogo';
 import { fetchActiveSeason, hasSeasonPass, seasonPricing } from '@/services/supabase/seasons';
 import { fetchLevelsWithProgress } from '@/services/supabase/levels';
+import SeasonProgress from '@/features/progression/SeasonProgress';
+import { seasonGoalPhrase } from '@/features/progression/copy';
 import { formatClp, FREE_LEVEL_MAX, LEVELS_PER_SEASON } from '@/types/database';
 import type { SeasonRow } from '@/types/database';
 import './home.css';
-
 
 function MenuIcon({ kind }: { kind: 'levels' | 'gallery' | 'admin' }) {
   const props = {
@@ -107,7 +108,7 @@ export default function HomeScreen() {
         <div className="home-hero">
           <p className="home-eyebrow">Arcade móvil</p>
           <BrandLogo size="hero" asHeading />
-          <p className="home-tagline">Conquista el territorio. Revela la imagen.</p>
+          <p className="home-tagline">Conquista el territorio. Revela el contenido oculto.</p>
         </div>
         <div className="home-cta-stack">
           <Link className="btn-cta home-cta" to="/login">
@@ -116,7 +117,9 @@ export default function HomeScreen() {
           <Link className="btn-ghost home-cta" to="/registro">
             Crear cuenta
           </Link>
-          <p className="home-hint">Toca Entrar si ya tienes cuenta. Si es tu primera vez, crea una.</p>
+          <p className="home-hint">
+            Toca Entrar si ya tienes cuenta. Si es tu primera vez, crea una.
+          </p>
         </div>
       </main>
     );
@@ -143,7 +146,14 @@ export default function HomeScreen() {
           onClick={() => void signOut()}
           title="Cerrar sesión"
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
@@ -153,13 +163,18 @@ export default function HomeScreen() {
 
       <section className="home-hero-card">
         <BrandLogo size="lg" asHeading />
-        <p className="home-tagline">Conquista el territorio y revela la imagen oculta.</p>
+        <p className="home-tagline">Conquista el territorio y revela el contenido oculto.</p>
         {season && (
           <p className="home-season-line">
             {season.name}
-            {total > 0 ? ` · ${completed}/${total}` : ''}
             {owned ? ' · Suscripción activa' : ` · Free 1–${FREE_LEVEL_MAX}`}
           </p>
+        )}
+        {season && total > 0 && (
+          <div className="home-season-progress">
+            <SeasonProgress completed={completed} total={total} />
+            <p className="home-goal">{seasonGoalPhrase(completed, total)}</p>
+          </div>
         )}
         <button type="button" className="btn-cta home-play" onClick={() => navigate('/levels')}>
           Jugar
@@ -194,7 +209,7 @@ export default function HomeScreen() {
           </span>
           <span className="home-menu-text">
             <strong>Galería</strong>
-            <small>Imágenes que ya revelaste</small>
+            <small>Contenido que ya revelaste</small>
           </span>
           <span className="home-menu-chevron" aria-hidden>
             ›

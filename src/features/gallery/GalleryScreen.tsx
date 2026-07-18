@@ -1,9 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchGallery } from '@/services/supabase/levels';
-import type { GalleryItem } from '@/types/database';
+import RevealedMedia from '@/components/RevealedMedia';
+import LevelReviews from '@/features/reviews/LevelReviews';
+import type { GalleryItem, LevelMediaType } from '@/types/database';
 import './gallery.css';
 
 type Tab = 'revealed' | 'locked';
+type TypeFilter = 'all' | LevelMediaType;
+
+const TYPE_FILTERS: { id: TypeFilter; label: string }[] = [
+  { id: 'all', label: 'Todo' },
+  { id: 'image', label: 'Fotos' },
+  { id: 'gif', label: 'GIFs' },
+  { id: 'video', label: 'Videos' },
+];
 
 export default function GalleryScreen() {
   const [items, setItems] = useState<GalleryItem[]>([]);
@@ -11,6 +21,7 @@ export default function GalleryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [viewer, setViewer] = useState<GalleryItem | null>(null);
   const [tab, setTab] = useState<Tab>('revealed');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -30,13 +41,16 @@ export default function GalleryScreen() {
 
   const revealed = useMemo(() => items.filter((i) => i.revealed), [items]);
   const locked = useMemo(() => items.filter((i) => !i.revealed), [items]);
-  const visible = tab === 'revealed' ? revealed : locked;
+  const hasSpecial = useMemo(() => items.some((i) => i.level.media_type !== 'image'), [items]);
+  const visible = (tab === 'revealed' ? revealed : locked).filter(
+    (i) => typeFilter === 'all' || i.level.media_type === typeFilter,
+  );
 
   return (
     <main className="gallery">
       <header className="gallery-header">
         <h1 className="page-title">Galería</h1>
-        <p className="page-sub">Completa niveles para revelar imágenes</p>
+        <p className="page-sub">Completa niveles para revelar el contenido oculto</p>
       </header>
 
       {!loading && items.length > 0 && (
@@ -61,6 +75,20 @@ export default function GalleryScreen() {
               Bloqueadas ({locked.length})
             </button>
           </div>
+          {hasSpecial && (
+            <div className="gallery-type-filters" role="group" aria-label="Filtrar por tipo">
+              {TYPE_FILTERS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  className={`gallery-type-chip${typeFilter === f.id ? ' is-active' : ''}`}
+                  onClick={() => setTypeFilter(f.id)}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="gallery-progress" aria-label="Progreso de galería">
             <div
               className="gallery-progress-bar"
@@ -96,6 +124,11 @@ export default function GalleryScreen() {
                 }
               >
                 <img src={item.displayUrl} alt="" draggable={false} />
+                {item.level.media_type !== 'image' && (
+                  <span className={`gallery-type-badge ${item.level.media_type}`} aria-hidden>
+                    {item.level.media_type === 'video' ? '▶' : 'GIF'}
+                  </span>
+                )}
                 {!item.revealed && (
                   <span className="gallery-veil">
                     <span className="gallery-lock" aria-hidden />
@@ -116,8 +149,8 @@ export default function GalleryScreen() {
           {visible.length === 0 && (
             <p className="gallery-msg">
               {tab === 'revealed'
-                ? 'Aún no has revelado ninguna. ¡Juega un nivel!'
-                : 'No quedan imágenes bloqueadas.'}
+                ? 'Aún no has revelado contenido. ¡Juega un nivel!'
+                : 'No queda contenido bloqueado.'}
             </p>
           )}
         </ul>
@@ -132,17 +165,37 @@ export default function GalleryScreen() {
           onClick={() => setViewer(null)}
         >
           <div className="gallery-viewer-card" onClick={(e) => e.stopPropagation()}>
-            <img
-              src={viewer.displayUrl}
-              alt={viewer.revealed ? viewer.level.name : 'Imagen bloqueada'}
-              className={viewer.revealed ? undefined : 'is-blurred'}
-              draggable={false}
-            />
+            {viewer.revealed ? (
+              <RevealedMedia
+                mediaType={viewer.level.media_type}
+                mediaUrl={viewer.mediaUrl}
+                posterUrl={viewer.displayUrl}
+                alt={viewer.level.name}
+              />
+            ) : (
+              <img
+                src={viewer.displayUrl}
+                alt="Contenido bloqueado"
+                className="is-blurred"
+                draggable={false}
+              />
+            )}
             <p>
               {viewer.revealed
                 ? viewer.level.name
-                : `${viewer.level.name}: completa el nivel para revelarla`}
+                : `${viewer.level.name}: completa el nivel para revelarlo`}
             </p>
+            {viewer.revealed && viewer.level.source_url && (
+              <a
+                className="btn-ghost gallery-source-cta"
+                href={viewer.level.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Ver el origen del contenido ↗
+              </a>
+            )}
+            {viewer.revealed && <LevelReviews levelId={viewer.level.id} />}
             <button type="button" className="btn-cta" onClick={() => setViewer(null)}>
               Cerrar
             </button>

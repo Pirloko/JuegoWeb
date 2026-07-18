@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { LevelConfig, LevelResultStats } from '@/types/level';
 import { completeLevel, fetchPlayableLevel } from '@/services/supabase/levels';
+import { awardBadges } from '@/services/supabase/badges';
+import { createSignedImageUrl } from '@/services/supabase/storage';
+import { BADGE_CATALOG, type BadgeId } from '@/features/progression/badgeCatalog';
+import RevealedMedia from '@/components/RevealedMedia';
+import type { LevelMediaType } from '@/types/database';
 import { fullscreenService } from '@/services/fullscreen/FullscreenService';
 import { markFirstLevelCompleted } from '@/services/pwa/installPrompt';
 import { gameEvents } from './core/GameEvents';
@@ -13,6 +18,9 @@ interface Result {
   stats: LevelResultStats;
   saveError: string | null;
   saving: boolean;
+  newBadges: BadgeId[];
+  /** Signed URL del GIF/video si el nivel es especial (para el revelado). */
+  mediaUrl: string | null;
 }
 
 export default function GameScreen() {
@@ -21,6 +29,10 @@ export default function GameScreen() {
 
   const [config, setConfig] = useState<LevelConfig | null>(null);
   const [levelName, setLevelName] = useState('');
+  const [levelMedia, setLevelMedia] = useState<{ type: LevelMediaType; path: string | null }>({
+    type: 'image',
+    path: null,
+  });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [gateSeasonId, setGateSeasonId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,6 +78,10 @@ export default function GameScreen() {
         setGateSeasonId(null);
         setConfig(data.config);
         setLevelName(data.level.name);
+        setLevelMedia({
+          type: data.level.media_type ?? 'image',
+          path: data.level.media_path ?? null,
+        });
         setLives(data.config.lives);
         setPct(0);
         setResult(null);
@@ -91,10 +107,24 @@ export default function GameScreen() {
       gameEvents.on('game:progress', ({ conqueredPct }) => setPct(conqueredPct)),
       gameEvents.on('game:life-lost', ({ livesLeft }) => setLives(livesLeft)),
       gameEvents.on('game:completed', (stats) => {
-        setResult({ won: true, stats, saveError: null, saving: true });
+        setResult({
+          won: true,
+          stats,
+          saveError: null,
+          saving: true,
+          newBadges: [],
+          mediaUrl: null,
+        });
       }),
       gameEvents.on('game:failed', (stats) => {
-        setResult({ won: false, stats, saveError: null, saving: false });
+        setResult({
+          won: false,
+          stats,
+          saveError: null,
+          saving: false,
+          newBadges: [],
+          mediaUrl: null,
+        });
       }),
     ];
     return () => unsubscribes.forEach((off) => off());
@@ -125,7 +155,17 @@ export default function GameScreen() {
       try {
         await completeLevel(levelId, result.stats.conqueredPct, result.stats.timeMs);
         markFirstLevelCompleted();
-        setResult((r) => (r ? { ...r, saving: false, saveError: null } : r));
+        let newBadges: BadgeId[] = [];
+        try {
+          newBadges = await awardBadges();
+        } catch {
+          // Sin drama: la RPC recomputa todo en el próximo completado.
+        }
+        let mediaUrl: string | null = null;
+        if (levelMedia.type !== 'image' && levelMedia.path) {
+          mediaUrl = await createSignedImageUrl(levelMedia.path);
+        }
+        setResult((r) => (r ? { ...r, saving: false, saveError: null, newBadges, mediaUrl } : r));
       } catch (e) {
         setResult((r) =>
           r
@@ -138,7 +178,7 @@ export default function GameScreen() {
         );
       }
     })();
-  }, [result, levelId]);
+  }, [result, levelId, levelMedia]);
 
   const retry = () => {
     if (!config) return;
@@ -202,11 +242,7 @@ export default function GameScreen() {
       <div className="game-subbar">
         <p className="game-level-name">{levelName}</p>
         {fsSupported && !fsActive && !needsFsReentry && (
-          <button
-            type="button"
-            className="hud-fs"
-            onClick={() => void fullscreenService.request()}
-          >
+          <button type="button" className="hud-fs" onClick={() => void fullscreenService.request()}>
             Pantalla completa
           </button>
         )}
@@ -232,19 +268,46 @@ export default function GameScreen() {
       {result && (
         <div className="result-overlay">
           <div className="result-card">
-            <h2>{result.won ? '¡Territorio conquistado!' : 'Has perdido'}</h2>
+            <h2>
+              {result.won
+                ? levelMedia.type !== 'image'
+                  ? 'Contenido desbloqueado, cachero'
+                  : '¡Territorio conquistado!'
+                : 'Has perdido'}
+            </h2>
+            {result.won && levelMedia.type !== 'image' && (
+              <RevealedMedia
+                mediaType={levelMedia.type}
+                mediaUrl={result.mediaUrl}
+                posterUrl={config.imageUrl}
+                alt={levelName}
+                className="result-media"
+              />
+            )}
             <p className="result-stats">
               Conquistado: {Math.floor(result.stats.conqueredPct)}% ·{' '}
               {(result.stats.timeMs / 1000).toFixed(1)}s
             </p>
-            {result.won && result.saving && (
-              <p className="result-save">Guardando progreso…</p>
-            )}
+            {result.won && result.saving && <p className="result-save">Guardando progreso…</p>}
             {result.won && result.saveError && (
               <p className="result-save-error">{result.saveError}</p>
             )}
             {result.won && !result.saving && !result.saveError && (
               <p className="result-save-ok">Progreso guardado</p>
+            )}
+            {result.won && result.newBadges.length > 0 && (
+              <div className="result-badges">
+                {result.newBadges.map((id) => (
+                  <p key={id} className="result-badge">
+                    <span className="result-badge-icon" aria-hidden>
+                      {BADGE_CATALOG[id].icon}
+                    </span>
+                    <span>
+                      <strong>{BADGE_CATALOG[id].name}</strong> · {BADGE_CATALOG[id].earnedPhrase}
+                    </span>
+                  </p>
+                ))}
+              </div>
             )}
             <div className="result-actions">
               <button className="btn-ghost" type="button" onClick={() => void exitToLevels()}>

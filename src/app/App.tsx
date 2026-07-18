@@ -8,6 +8,7 @@ import HomeScreen from '@/features/home/HomeScreen';
 import LevelsScreen from '@/features/levels/LevelsScreen';
 import GalleryScreen from '@/features/gallery/GalleryScreen';
 import ProfileScreen from '@/features/profile/ProfileScreen';
+import BadgesScreen from '@/features/progression/BadgesScreen';
 import OrientationGate from '@/components/OrientationGate';
 import AppShell from '@/components/AppShell';
 import RequireAdmin from '@/features/admin/RequireAdmin';
@@ -52,6 +53,14 @@ export default function App() {
               element={
                 <RequireAuth>
                   <ProfileScreen />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/logros"
+              element={
+                <RequireAuth>
+                  <BadgesScreen />
                 </RequireAuth>
               }
             />

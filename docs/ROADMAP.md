@@ -16,20 +16,26 @@ committeada. `npm run build` verde al final de cada fase.
 
 ## Fases
 
-| Fase | Entregable | Criterio de aceptación |
-|---|---|---|
-| **0** | Docs de arquitectura (este directorio) + repo | Decisiones clave escritas; riesgos identificados |
-| **1** | Bootstrap: Vite + React + TS + Phaser + ESLint/Prettier + env + PWA base + deploy "hola" en Vercel | `npm install && npm run dev && npm run build` verdes; URL pública viva |
-| **2** | Prototipo jugable: canvas vertical, jugador, joystick táctil, 1 enemigo, trail, conquista básica, muerte | Se puede jugar en un teléfono real y "se siente" bien |
-| **3** | Sistema real de conquista: flood-fill, regiones múltiples, %, victoria/derrota | Checklist de casos límite de GAMEPLAY.md en verde |
-| **4** | Revelado de imagen: máscara desde el grid, imagen de prueba, nivel completado | Cambiar la imagen no toca código de gameplay |
-| **5** | Power-up bomba completo | Flujo validable de POWERUPS.md en verde |
-| **6** | Arquitectura genérica de power-ups (+ los siguientes, uno a uno) | Añadir un power-up no toca el núcleo |
-| **7** | Supabase Auth: registro, login, logout, sesión, rutas protegidas | Sesión persiste tras cerrar el navegador |
-| **8** | Niveles y progreso: lista, bloqueo secuencial, RPC `complete_level`, intentos/mejor % | RLS impide escribir progreso ajeno o directo |
-| **9** | Imágenes en Storage + galería (bloqueada/desbloqueada) | Signed URLs solo para imágenes desbloqueadas |
-| **10** | Fullscreen, PWA instalable, safe areas, performance | Matriz de pruebas de MOBILE.md en verde |
-| **11** | Administración de contenido (niveles/imágenes sin tocar código) | Crear nivel nuevo = datos, cero deploy |
+| Fase   | Entregable                                                                                               | Criterio de aceptación                                                 |
+| ------ | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **0**  | Docs de arquitectura (este directorio) + repo                                                            | Decisiones clave escritas; riesgos identificados                       |
+| **1**  | Bootstrap: Vite + React + TS + Phaser + ESLint/Prettier + env + PWA base + deploy "hola" en Vercel       | `npm install && npm run dev && npm run build` verdes; URL pública viva |
+| **2**  | Prototipo jugable: canvas vertical, jugador, joystick táctil, 1 enemigo, trail, conquista básica, muerte | Se puede jugar en un teléfono real y "se siente" bien                  |
+| **3**  | Sistema real de conquista: flood-fill, regiones múltiples, %, victoria/derrota                           | Checklist de casos límite de GAMEPLAY.md en verde                      |
+| **4**  | Revelado de imagen: máscara desde el grid, imagen de prueba, nivel completado                            | Cambiar la imagen no toca código de gameplay                           |
+| **5**  | Power-up bomba completo                                                                                  | Flujo validable de POWERUPS.md en verde                                |
+| **6**  | Arquitectura genérica de power-ups (+ los siguientes, uno a uno)                                         | Añadir un power-up no toca el núcleo                                   |
+| **7**  | Supabase Auth: registro, login, logout, sesión, rutas protegidas                                         | Sesión persiste tras cerrar el navegador                               |
+| **8**  | Niveles y progreso: lista, bloqueo secuencial, RPC `complete_level`, intentos/mejor %                    | RLS impide escribir progreso ajeno o directo                           |
+| **9**  | Imágenes en Storage + galería (bloqueada/desbloqueada)                                                   | Signed URLs solo para imágenes desbloqueadas                           |
+| **10** | Fullscreen, PWA instalable, safe areas, performance                                                      | Matriz de pruebas de MOBILE.md en verde                                |
+| **11** | Administración de contenido (niveles/imágenes sin tocar código)                                          | Crear nivel nuevo = datos, cero deploy                                 |
+
+Las fases de gamificación (G1–G5: progresión visible + hitos, medallas,
+media mixta foto/GIF/video, origen del contenido + reseñas) viven en
+`docs/GAMIFICACION_PLAN.md`. Amplían la v1 sin tocar el alcance congelado:
+sigue sin haber ranking, comparación entre jugadores ni social abierto —
+las reseñas son conversación anclada al contenido revelado, no un muro.
 
 ## Riesgos técnicos principales
 

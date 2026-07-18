@@ -50,11 +50,13 @@ las muestre.
 
 ## RLS
 
-| Tabla | SELECT | INSERT/UPDATE |
-|---|---|---|
-| profiles | dueño | dueño (solo su fila) |
-| levels | authenticated (is_active) | nadie (solo service role / SQL admin) |
-| user_level_progress | dueño | **solo vía RPC** (sin policy de escritura directa) |
+| Tabla               | SELECT                                                      | INSERT/UPDATE                                                 |
+| ------------------- | ----------------------------------------------------------- | ------------------------------------------------------------- |
+| profiles            | dueño                                                       | dueño (solo su fila)                                          |
+| levels              | authenticated (is_active)                                   | nadie (solo service role / SQL admin)                         |
+| user_level_progress | dueño                                                       | **solo vía RPC** (sin policy de escritura directa)            |
+| user_badges         | dueño                                                       | **solo vía `award_badges()`** (sin escritura directa)         |
+| level_reviews       | propia o admin (listado ajeno solo vía `get_level_reviews`) | propia y solo con el nivel `completed`; DELETE propia o admin |
 
 ## Validación server-side de recompensas
 
@@ -65,6 +67,7 @@ complete_level(level_id uuid, pct numeric, time_ms int, session_payload jsonb)
 ```
 
 Checks de plausibilidad dentro de la función:
+
 - El nivel anterior (`sort_order - 1`) está `completed` para este usuario.
 - `pct >= targetPct` del config del nivel.
 - `time_ms` supera un mínimo razonable (config del nivel) — bloquea
@@ -86,6 +89,32 @@ Migración `00009_seasons_and_entitlements.sql` + `00011_subscriptions.sql`:
 - Helpers: `has_season_pass` (sub **o** entitlement), `has_active_subscription`,
   `upsert_subscription_from_mp`, `grant_season_pass`.
 - `complete_level` scoped a la temporada + gate free (1–7) / pago (8+).
+
+## Gamificación (migraciones 00015–00017)
+
+Ver plan y decisiones en `docs/GAMIFICACION_PLAN.md`.
+
+- `user_badges` (00015) — otorgamientos de medallas. El catálogo visual
+  (nombre/copy/ícono) vive en `src/features/progression/badgeCatalog.ts`.
+  La elegibilidad la decide `award_badges()`: security definer, idempotente,
+  recomputa todo desde `user_level_progress` y devuelve solo las medallas
+  nuevas (React la llama tras `complete_level`). La regla de 3★ está
+  replicada en `starsForLevel` (TS) y en la RPC (comentario cruzado).
+- `levels.media_type` (`image|gif|video`) + `levels.media_path` (00016) —
+  contenido oculto especial (video/GIF ≤ 20 s, ≤ 12 MB; el bucket acepta
+  `image/gif`, `video/mp4`, `video/webm`). Phaser sigue revelando el poster
+  (`image_path`); el media completo se reproduce en React (resultado y
+  galería). `can_read_level_image` cubre `media_path` y la carpeta
+  `level-{n}/` sigue gateada a unlocked/completed.
+- `levels.source_url` (00017) — procedencia del contenido (solo http/https,
+  opcional). El jugador la visita desde la galería tras revelar.
+- `level_reviews` (00017) — 1 reseña por jugador por nivel (unique), body
+  3–500 tras trim (check replicado en
+  `src/features/reviews/reviewValidation.ts`). Escritura solo del autor con
+  nivel `completed`; admin puede borrar (moderación). El listado con
+  username sale por `get_level_reviews(level_id)` (security definer con
+  gate "el lector completó el nivel"; no abre la RLS select-own de
+  `profiles`). Rate limit por trigger: máx 10 reseñas nuevas/hora.
 
 ## Storage
 

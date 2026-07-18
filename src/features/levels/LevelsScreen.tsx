@@ -6,6 +6,8 @@ import { fullscreenService } from '@/services/fullscreen/FullscreenService';
 import { markFirstLevelCompleted } from '@/services/pwa/installPrompt';
 import { formatClp, FREE_LEVEL_MAX, LEVELS_PER_SEASON } from '@/types/database';
 import type { LevelListItem, SeasonRow } from '@/types/database';
+import SeasonProgress from '@/features/progression/SeasonProgress';
+import { starsForLevel } from '@/features/progression/progression';
 import './levels.css';
 
 function formatTime(ms: number | null): string {
@@ -13,10 +15,12 @@ function formatTime(ms: number | null): string {
   return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function Stars({ completed }: { completed: boolean }) {
+function Stars({ bestPct, targetPct }: { bestPct: number | null; targetPct: number }) {
+  const n = starsForLevel(bestPct, targetPct);
   return (
-    <span className="level-stars" aria-hidden>
-      {completed ? '★★★' : '☆☆☆'}
+    <span className="level-stars" aria-label={`${n} de 3 estrellas`}>
+      {'★'.repeat(n)}
+      {'☆'.repeat(3 - n)}
     </span>
   );
 }
@@ -88,12 +92,15 @@ export default function LevelsScreen() {
             {season ? `${season.name} · free 1–${FREE_LEVEL_MAX}` : 'Toca un nivel disponible'}
           </p>
         </div>
-        {!loading && items.length > 0 && (
-          <div className="levels-progress-pill" title="Niveles completados">
-            {completedCount}/{Math.max(items.length, LEVELS_PER_SEASON)}
-          </div>
-        )}
       </header>
+
+      {!loading && items.length > 0 && (
+        <SeasonProgress
+          completed={completedCount}
+          total={Math.max(items.length, LEVELS_PER_SEASON)}
+          variant="compact"
+        />
+      )}
 
       {showPassBanner && season && pricing && (
         <button
@@ -103,9 +110,7 @@ export default function LevelsScreen() {
         >
           <span>
             Suscripción {FREE_LEVEL_MAX + 1}–{LEVELS_PER_SEASON} ·{' '}
-            {pricing.onOffer && (
-              <s className="levels-pass-list">{formatClp(pricing.listClp)}</s>
-            )}{' '}
+            {pricing.onOffer && <s className="levels-pass-list">{formatClp(pricing.listClp)}</s>}{' '}
             {formatClp(pricing.effectiveClp)}/mes
           </span>
           <span aria-hidden>›</span>
@@ -144,6 +149,11 @@ export default function LevelsScreen() {
                   }
                 >
                   <span className="level-num">{level.sort_order}</span>
+                  {level.media_type !== 'image' && (
+                    <span className={`level-media-dot ${level.media_type}`} aria-hidden>
+                      {level.media_type === 'video' ? '▶' : 'GIF'}
+                    </span>
+                  )}
                   <span className="level-tile-name">{level.name}</span>
                   {status === 'locked' ? (
                     <span className="level-lock-badge">Bloqueado</span>
@@ -151,7 +161,7 @@ export default function LevelsScreen() {
                     <span className="level-pass-badge">Pase</span>
                   ) : status === 'completed' ? (
                     <>
-                      <Stars completed />
+                      <Stars bestPct={bestPct} targetPct={level.config.targetPct} />
                       <span className="level-tile-meta">
                         {bestPct != null ? `${Math.floor(bestPct)}%` : '—'} ·{' '}
                         {formatTime(bestTimeMs)}
