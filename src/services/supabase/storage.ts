@@ -61,17 +61,28 @@ export async function resolvePlayableLevelImageUrl(
   imagePath: string,
   sortOrder: number,
 ): Promise<string> {
+  const errors: string[] = [];
   for (const path of candidatePaths(imagePath, sortOrder)) {
     try {
       const { data, error } = await getSupabase().storage.from(BUCKET).download(path);
-      if (error || !data || data.size === 0) continue;
+      if (error) {
+        errors.push(`${path}: ${error.message}`);
+        continue;
+      }
+      if (!data || data.size === 0) {
+        errors.push(`${path}: empty`);
+        continue;
+      }
       return URL.createObjectURL(data);
     } catch (e) {
-      console.warn('[storage] download', path, e);
+      errors.push(`${path}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
   const local = localLevelImageUrl(sortOrder);
-  console.warn(`[storage] Usando fallback local (juego) para ${imagePath} → ${local}`);
+  console.warn(
+    `[storage] Jugador sin acceso a imagen de nivel (¿RLS?). Fallback ${local}. Detalle:`,
+    errors.join(' | ') || 'sin candidatos',
+  );
   return local;
 }
