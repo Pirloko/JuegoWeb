@@ -1,0 +1,103 @@
+.game-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.game-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-exit {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #3a3a55;
+  border-radius: 10px;
+  background: none;
+  color: #9a9ab0;
+  font-size: 1rem;
+}
+
+.hud-progress {
+  font-weight: 700;
+}
+
+.hud-lives {
+  color: #f472b6;
+  letter-spacing: 3px;
+}
+
+.game-canvas {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  touch-action: none;
+}
+
+.game-canvas canvas {
+  display: block;
+}
+
+.result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 10, 20, 0.75);
+}
+
+.result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(100%, 360px);
+  padding: 28px 24px;
+  text-align: center;
+  background: #1a1e33;
+  border: 1px solid #2c3052;
+  border-radius: 20px;
+}
+
+.result-card h2 {
+  font-size: 1.5rem;
+}
+
+.result-stats {
+  color: #9a9ab0;
+  font-size: 0.95rem;
+}
+
+.result-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.result-actions button {
+  flex: 1;
+  min-height: 48px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #8b5cf6, #6ee7b7);
+  color: #0f1220;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #3a3a55;
+  color: #e9e9f2;
+}

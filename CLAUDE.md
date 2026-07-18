@@ -5,9 +5,11 @@ Arcade tipo Qix/Gals Panic: React (shell) + Phaser 3 (gameplay) + TypeScript
 
 ## Estado
 
-Fase 1 completada (bootstrap: Vite + React + TS + Phaser instalado + ESLint/
-Prettier + PWA base + cliente Supabase perezoso). Siguiente: Fase 2
-(prototipo jugable). El roadmap y el alcance congelado están en `docs/ROADMAP.md`.
+Fase 2 completada (prototipo jugable: grid de territorio con flood-fill,
+jugador, trail, 1 enemigo, joystick táctil flotante, vidas, victoria/derrota,
+HUD React conectado por event bus). Siguiente: Fase 3 (endurecer el sistema
+de conquista con el checklist de casos límite de docs/GAMEPLAY.md y tests).
+El roadmap y el alcance congelado están en `docs/ROADMAP.md`.
 
 ## Comandos
 
