@@ -1,0 +1,44 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
+import { fileURLToPath } from 'node:url';
+
+export default defineConfig({
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'JuegoWeb',
+        short_name: 'JuegoWeb',
+        description: 'Arcade de conquista de territorio para jugar en el navegador',
+        lang: 'es',
+        display: 'standalone',
+        orientation: 'portrait',
+        theme_color: '#0f1220',
+        background_color: '#0f1220',
+        icons: [
+          { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+          {
+            src: 'icons/icon-512-maskable.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        // Phaser es grande; subir el límite de precache por encima del bundle
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+      },
+    }),
+  ],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  // FASE 2: al importar Phaser, separarlo en su propio chunk (manualChunks).
+});

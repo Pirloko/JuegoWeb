@@ -5,19 +5,23 @@ Arcade tipo Qix/Gals Panic: React (shell) + Phaser 3 (gameplay) + TypeScript
 
 ## Estado
 
-Fase 0 completada (documentación). Siguiente: Fase 1 (bootstrap Vite).
-El roadmap completo y el alcance congelado de v1 están en `docs/ROADMAP.md`.
+Fase 1 completada (bootstrap: Vite + React + TS + Phaser instalado + ESLint/
+Prettier + PWA base + cliente Supabase perezoso). Siguiente: Fase 2
+(prototipo jugable). El roadmap y el alcance congelado están en `docs/ROADMAP.md`.
 
 ## Comandos
 
-Todavía no hay proyecto Vite. Tras la Fase 1 serán:
-
 ```bash
 npm install
-npm run dev      # servidor local
-npm run build    # build de producción (debe estar verde antes de cada commit)
-npm run lint
+npm run dev      # servidor local (http://localhost:5173)
+npm run build    # tsc + vite build (debe estar verde antes de cada commit)
+npm run lint     # eslint
+npm run format   # prettier
+node scripts/generate-icons.mjs   # regenerar iconos PWA
 ```
+
+Variables de entorno: copiar `.env.example` a `.env` (Supabase se conecta en
+la Fase 7; la app funciona sin backend hasta entonces).
 
 ## Documentación (leer antes de tocar el área correspondiente)
 
