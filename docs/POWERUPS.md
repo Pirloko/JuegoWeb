@@ -12,21 +12,24 @@ Los power-ups de un nivel se declaran en `levels.config.powerUps`:
 }
 ```
 
-## Arquitectura extensible
+## Arquitectura extensible (implementada en la FASE 6)
 
-```ts
-interface PowerUpEffect {
-  readonly type: PowerUpType;
-  apply(ctx: PowerUpContext): void;   // ctx: grid, enemies, player, reveal, fx
-}
+```text
+src/features/game/powerups/
+├── PowerUpEffect.ts    # PowerUpContext (capacidades) + interface del efecto
+├── registry.ts         # tipo → efecto; exhaustivo por compilación
+├── BombEffect.ts
+└── LightningEffect.ts
 ```
 
-- `PowerUpSystem`: spawn (solo en celdas FREE), colisión con jugador,
-  consumo, y despacho a un registro `Map<PowerUpType, PowerUpEffect>`.
-- Añadir un power-up nuevo = una clase efecto + una entrada en el registro +
-  config JSON. Cero cambios en el núcleo.
-- La abstracción genérica se construye en la Fase 6, **después** de validar
-  la bomba concreta (Fase 5). No antes.
+- `PowerUpSystem` (systems/): spawn por config y recogida; agnóstico al tipo.
+- `PowerUpContext`: lo único que un efecto conoce de la escena — `territory`,
+  `cell`, `getEnemies()`, `killEnemy()`, `conquer(cells)` (pipeline común:
+  conquista + revela + recoloca + progreso + victoria) y `scene` para FX.
+- El registro es un mapped type sobre `PowerUpConfig['type']`: declarar un
+  tipo nuevo en el union sin registrar su efecto **no compila**.
+- Añadir un power-up = clase de efecto + entrada en el registro + config
+  JSON (+ emoji en la entidad PowerUp). Cero cambios en el núcleo.
 
 ## Bomba expansiva (el primero, Fase 5)
 
@@ -58,7 +61,7 @@ Detalles (decisiones tomadas en la FASE 5):
 
 | Tipo | Efecto | Nota de diseño |
 |---|---|---|
-| Rayo | Elimina 1 enemigo, encadenable | Target: enemigo más cercano |
+| ~~Rayo~~ ✓ | Elimina al más cercano, encadena hasta `params.targets` | Hecho en FASE 6 (selección testeada) |
 | Escudo | Invulnerable N segundos | El trail sigue siendo vulnerable? → decidir |
 | Imán | Atrae power-ups cercanos | Solo afecta a items, trivial |
 | Congelación | Pausa enemigos N segundos | Estado `frozen` en Enemy base |

@@ -1,15 +1,23 @@
 import Phaser from 'phaser';
+import type { PowerUpConfig } from '@/types/level';
 import { CELL } from '../core/constants';
 import type { Cell } from '../systems/TerritorySystem';
 
-/** Power-up recogible en el mapa. Por ahora solo la bomba (FASE 5). */
+const EMOJI: Record<PowerUpConfig['type'], string> = {
+  bomb: '💣',
+  lightning: '⚡',
+};
+
+/** Power-up recogible en el mapa. El efecto lo resuelve powerups/registry. */
 export class PowerUp extends Phaser.GameObjects.Text {
   constructor(
     scene: Phaser.Scene,
     readonly cell: Cell,
-    readonly radiusCells: number,
+    readonly config: PowerUpConfig,
   ) {
-    super(scene, (cell.col + 0.5) * CELL, (cell.row + 0.5) * CELL, '💣', { fontSize: '44px' });
+    super(scene, (cell.col + 0.5) * CELL, (cell.row + 0.5) * CELL, EMOJI[config.type], {
+      fontSize: '44px',
+    });
     this.setOrigin(0.5).setDepth(8);
     scene.add.existing(this);
     scene.tweens.add({

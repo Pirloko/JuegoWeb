@@ -5,6 +5,8 @@ import { gameEvents } from '../core/GameEvents';
 import { CellState, TerritorySystem, type Cell } from '../systems/TerritorySystem';
 import { RevealSystem } from '../systems/RevealSystem';
 import { PowerUpSystem } from '../systems/PowerUpSystem';
+import { applyPowerUp } from '../powerups/registry';
+import type { PowerUpContext } from '../powerups/PowerUpEffect';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { VirtualJoystick } from '../input/VirtualJoystick';
@@ -74,7 +76,7 @@ export class GameScene extends Phaser.Scene {
     this.powerUps = new PowerUpSystem(this, this.level.powerUps, {
       territory: this.territory,
       getPlayerCell: () => this.cellOf(this.player.x, this.player.y),
-      onBombPicked: (cell, radiusCells) => this.explodeBomb(cell, radiusCells),
+      onPowerUp: (config, cell) => applyPowerUp(this.buildPowerUpContext(cell), config),
     });
 
     this.joystick = new VirtualJoystick(this);
@@ -106,62 +108,38 @@ export class GameScene extends Phaser.Scene {
 
   // ── Power-ups ────────────────────────────────────────────────────────
 
-  /**
-   * Bomba: conquista (y revela) las celdas libres del radio — el trail
-   * activo sobrevive — y elimina a los enemigos dentro de la onda.
-   */
-  private explodeBomb(cell: Cell, radiusCells: number): void {
-    const centerX = (cell.col + 0.5) * CELL;
-    const centerY = (cell.row + 0.5) * CELL;
-    const blastRadiusPx = radiusCells * CELL;
+  /** Capacidades que un efecto de power-up puede usar (ver powerups/). */
+  private buildPowerUpContext(cell: Cell): PowerUpContext {
+    return {
+      scene: this,
+      territory: this.territory,
+      cell,
+      getEnemies: () => this.enemies,
+      killEnemy: (enemy) => this.killEnemy(enemy),
+      conquer: (cells) => this.conquerAndReveal(cells),
+    };
+  }
 
-    this.explosionFx(centerX, centerY, blastRadiusPx);
-
-    const { conquered, pct } = this.territory.conquerCells(
-      this.territory.cellsInRadius(cell, radiusCells),
-    );
-    for (const conqueredCell of conquered) {
-      this.reveal.setCellState(conqueredCell.col, conqueredCell.row, CellState.Conquered);
+  /** Pipeline común de conquista directa (power-ups). */
+  private conquerAndReveal(cells: Cell[]): void {
+    const { conquered, pct } = this.territory.conquerCells(cells);
+    for (const cell of conquered) {
+      this.reveal.setCellState(cell.col, cell.row, CellState.Conquered);
     }
-
-    this.enemies = this.enemies.filter((enemy) => {
-      const hit =
-        Phaser.Math.Distance.Between(enemy.x, enemy.y, centerX, centerY) <=
-        blastRadiusPx + enemy.radius;
-      if (hit) {
-        this.tweens.add({
-          targets: enemy,
-          scale: 0,
-          alpha: 0,
-          duration: 250,
-          onComplete: () => enemy.destroy(),
-        });
-      }
-      return !hit;
-    });
     this.relocateTrappedEnemies();
-
     gameEvents.emit('game:progress', { conqueredPct: pct });
     if (pct >= this.level.targetPct) this.finish(true);
   }
 
-  private explosionFx(x: number, y: number, radiusPx: number): void {
-    this.cameras.main.shake(200, 0.012);
-    const flash = this.add.circle(x, y, radiusPx, 0xfde68a, 0.35).setDepth(20);
+  private killEnemy(enemy: Enemy): void {
+    const index = this.enemies.indexOf(enemy);
+    if (index >= 0) this.enemies.splice(index, 1);
     this.tweens.add({
-      targets: flash,
+      targets: enemy,
+      scale: 0,
       alpha: 0,
-      duration: 350,
-      onComplete: () => flash.destroy(),
-    });
-    const ring = this.add.circle(x, y, 12).setStrokeStyle(6, 0xfbbf24, 1).setDepth(21);
-    this.tweens.add({
-      targets: ring,
-      radius: radiusPx,
-      alpha: 0,
-      duration: 400,
-      ease: 'Cubic.easeOut',
-      onComplete: () => ring.destroy(),
+      duration: 250,
+      onComplete: () => enemy.destroy(),
     });
   }
 

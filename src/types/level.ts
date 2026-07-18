@@ -3,22 +3,32 @@ export interface EnemyConfig {
   speed: number;
 }
 
+export interface PowerUpSpawnConfig {
+  /** Cada cuánto intenta aparecer. */
+  delayMs: number;
+  /** Máximo de apariciones en el nivel. */
+  max: number;
+}
+
 export interface BombConfig {
   type: 'bomb';
-  spawn: {
-    /** Cada cuánto intenta aparecer una bomba. */
-    delayMs: number;
-    /** Máximo de bombas que aparecen en el nivel. */
-    max: number;
-  };
+  spawn: PowerUpSpawnConfig;
   params: {
     /** Radio de la explosión en celdas. */
     radiusCells: number;
   };
 }
 
-/** Se ampliará con más tipos en la FASE 6. */
-export type PowerUpConfig = BombConfig;
+export interface LightningConfig {
+  type: 'lightning';
+  spawn: PowerUpSpawnConfig;
+  params: {
+    /** Nº de enemigos que encadena (el más cercano primero). */
+    targets: number;
+  };
+}
+
+export type PowerUpConfig = BombConfig | LightningConfig;
 
 export interface LevelConfig {
   targetPct: number;

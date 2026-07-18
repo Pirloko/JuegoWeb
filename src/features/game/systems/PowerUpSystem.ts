@@ -11,13 +11,13 @@ const SPAWN_ATTEMPTS = 60;
 interface Deps {
   territory: TerritorySystem;
   getPlayerCell: () => Cell;
-  /** La escena orquesta el efecto (VFX, conquista, enemigos, progreso). */
-  onBombPicked: (cell: Cell, radiusCells: number) => void;
+  /** Despacho del efecto (powerups/registry vía la escena). */
+  onPowerUp: (config: PowerUpConfig, cell: Cell) => void;
 }
 
 /**
  * Gestiona spawn y recogida de power-ups según la config del nivel.
- * En la FASE 6 el despacho de efectos se generaliza a un registro por tipo.
+ * Es agnóstico al tipo: el efecto lo resuelve el registro (powerups/).
  */
 export class PowerUpSystem {
   private readonly active: PowerUp[] = [];
@@ -29,7 +29,6 @@ export class PowerUpSystem {
     private readonly deps: Deps,
   ) {
     for (const config of configs) {
-      if (config.type !== 'bomb') continue;
       let spawned = 0;
       const timer = scene.time.addEvent({
         delay: config.spawn.delayMs,
@@ -42,7 +41,7 @@ export class PowerUpSystem {
           const cell = this.findSpawnCell();
           if (!cell) return; // sin sitio válido: reintenta en el próximo tick
           spawned++;
-          this.active.push(new PowerUp(this.scene, cell, config.params.radiusCells));
+          this.active.push(new PowerUp(this.scene, cell, config));
         },
       });
       this.timers.push(timer);
@@ -57,9 +56,9 @@ export class PowerUpSystem {
         continue;
       }
       this.active.splice(i, 1);
-      const { cell, radiusCells } = powerUp;
+      const { cell, config } = powerUp;
       powerUp.consume();
-      this.deps.onBombPicked(cell, radiusCells);
+      this.deps.onPowerUp(config, cell);
     }
   }
 
