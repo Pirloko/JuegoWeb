@@ -48,6 +48,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   preload(): void {
+    // Signed URLs de Supabase son cross-origin; sin esto la textura falla en silencio.
+    this.load.setCORS('anonymous');
     this.load.image(LEVEL_IMAGE_KEY, this.level.imageUrl);
   }
 

@@ -1,5 +1,5 @@
 import { getSupabase } from '@/services/supabase/client';
-import { createSignedImageUrl, localLevelImageUrl } from '@/services/supabase/storage';
+import { localLevelImageUrl, resolveLevelImageUrl } from '@/services/supabase/storage';
 import { fetchActiveSeason, hasSeasonPass } from '@/services/supabase/seasons';
 import type {
   GalleryItem,
@@ -92,8 +92,7 @@ export async function fetchPlayableLevel(
     };
   }
 
-  const signed = await createSignedImageUrl(row.image_path);
-  const imageUrl = signed ?? localLevelImageUrl(row.sort_order);
+  const imageUrl = await resolveLevelImageUrl(row.image_path, row.sort_order);
 
   return {
     level: row,
@@ -117,8 +116,7 @@ export async function fetchGallery(seasonId?: string): Promise<GalleryItem[]> {
     items.map(async ({ level, status }) => {
       const revealed = status === 'completed';
       const path = revealed ? level.image_path : level.thumb_path;
-      const signed = await createSignedImageUrl(path);
-      const displayUrl = signed ?? localLevelImageUrl(level.sort_order);
+      const displayUrl = await resolveLevelImageUrl(path, level.sort_order);
       return { level, status, revealed, displayUrl };
     }),
   );
