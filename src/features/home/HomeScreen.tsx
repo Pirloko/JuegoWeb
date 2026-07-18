@@ -6,16 +6,14 @@ import InstallBanner from '@/components/InstallBanner';
 import BrandLogo from '@/components/BrandLogo';
 import { fetchActiveSeason, hasSeasonPass, seasonPricing } from '@/services/supabase/seasons';
 import { fetchLevelsWithProgress } from '@/services/supabase/levels';
-import SeasonProgress from '@/features/progression/SeasonProgress';
-import { seasonGoalPhrase } from '@/features/progression/copy';
-import { formatClp, FREE_LEVEL_MAX, LEVELS_PER_SEASON } from '@/types/database';
+import { formatClp, FREE_LEVEL_MAX } from '@/types/database';
 import type { SeasonRow } from '@/types/database';
 import './home.css';
 
 function MenuIcon({ kind }: { kind: 'levels' | 'gallery' | 'admin' }) {
   const props = {
-    width: 28,
-    height: 28,
+    width: 26,
+    height: 26,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: 'currentColor',
@@ -49,6 +47,39 @@ function MenuIcon({ kind }: { kind: 'levels' | 'gallery' | 'admin' }) {
   );
 }
 
+function PlayIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-11-6.86a1 1 0 0 0-1.5.86Z" />
+    </svg>
+  );
+}
+
+function CrownIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M3 18h18l-1.5-9-4.5 3.5L12 5l-3 7.5L4.5 9 3 18Z" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden
+    >
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M16 3v4M8 3v4M3 11h18" />
+    </svg>
+  );
+}
+
 export default function HomeScreen() {
   const navigate = useNavigate();
   const { session, user, loading, configured, signOut } = useAuth();
@@ -57,7 +88,7 @@ export default function HomeScreen() {
 
   const [season, setSeason] = useState<SeasonRow | null>(null);
   const [completed, setCompleted] = useState(0);
-  const [total, setTotal] = useState(0);
+  const [levelCount, setLevelCount] = useState(0);
   const [owned, setOwned] = useState(false);
 
   useEffect(() => {
@@ -75,7 +106,7 @@ export default function HomeScreen() {
         setSeason(active);
         setOwned(pass);
         setCompleted(list.filter((i) => i.status === 'completed').length);
-        setTotal(list.length || LEVELS_PER_SEASON);
+        setLevelCount(list.length);
       } catch {
         // home sigue usable sin stats
       }
@@ -108,7 +139,7 @@ export default function HomeScreen() {
         <div className="home-hero">
           <p className="home-eyebrow">Arcade móvil</p>
           <BrandLogo size="hero" asHeading />
-          <p className="home-tagline">Conquista el territorio. Revela el contenido oculto.</p>
+          <p className="home-tagline">Conquista el territorio. Revela la imagen oculta.</p>
         </div>
         <div className="home-cta-stack">
           <Link className="btn-cta home-cta" to="/login">
@@ -134,10 +165,9 @@ export default function HomeScreen() {
           <div className="home-avatar" aria-hidden>
             {displayName.slice(0, 1).toUpperCase()}
           </div>
-          <div>
-            <p className="home-hello">Hola,</p>
-            <p className="home-name">{displayName}</p>
-          </div>
+          <p className="home-hello">
+            Hola, <strong>{displayName}</strong>
+          </p>
         </div>
         <button
           type="button"
@@ -147,8 +177,8 @@ export default function HomeScreen() {
           title="Cerrar sesión"
         >
           <svg
-            width="22"
-            height="22"
+            width="20"
+            height="20"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -163,29 +193,43 @@ export default function HomeScreen() {
 
       <section className="home-hero-card">
         <BrandLogo size="lg" asHeading />
-        <p className="home-tagline">Conquista el territorio y revela el contenido oculto.</p>
+        <p className="home-tagline">Conquista el territorio y revela la imagen oculta.</p>
+
         {season && (
-          <p className="home-season-line">
-            {season.name}
-            {owned ? ' · Suscripción activa' : ` · Free 1–${FREE_LEVEL_MAX}`}
-          </p>
-        )}
-        {season && total > 0 && (
-          <div className="home-season-progress">
-            <SeasonProgress completed={completed} total={total} />
-            <p className="home-goal">{seasonGoalPhrase(completed, total)}</p>
+          <div className="home-meta" aria-label="Temporada">
+            <span className="home-meta-item">
+              <CalendarIcon />
+              {season.name}
+            </span>
+            {levelCount > 0 && (
+              <span className="home-meta-item home-meta-count">
+                {completed}/{levelCount}
+              </span>
+            )}
+            <span className="home-meta-item home-meta-free">
+              {owned ? 'Suscripción' : `Free 1–${FREE_LEVEL_MAX}`}
+            </span>
           </div>
         )}
+
         <button type="button" className="btn-cta home-play" onClick={() => navigate('/levels')}>
+          <PlayIcon />
           Jugar
         </button>
+
         {season && !owned && pricing && (
           <button
             type="button"
-            className="btn-ghost home-pass-cta"
+            className="home-pass-cta"
             onClick={() => navigate(`/pase/${season.id}`)}
           >
-            Suscripción · {formatClp(pricing.effectiveClp)}/mes
+            <span className="home-pass-left">
+              <CrownIcon />
+              Suscripción · {formatClp(pricing.effectiveClp)}/mes
+            </span>
+            <span className="home-pass-chevron" aria-hidden>
+              ›
+            </span>
           </button>
         )}
       </section>
@@ -209,7 +253,7 @@ export default function HomeScreen() {
           </span>
           <span className="home-menu-text">
             <strong>Galería</strong>
-            <small>Contenido que ya revelaste</small>
+            <small>Imágenes que ya revelaste</small>
           </span>
           <span className="home-menu-chevron" aria-hidden>
             ›

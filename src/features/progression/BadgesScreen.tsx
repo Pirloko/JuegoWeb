@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { fetchMyBadges } from '@/services/supabase/badges';
 import { BADGE_CATALOG, BADGE_ORDER } from './badgeCatalog';
 import './badges.css';
@@ -59,10 +59,14 @@ export default function BadgesScreen() {
 
       {!loading && !error && (
         <ul className="badges-list">
-          {sorted.map((def) => {
+          {sorted.map((def, index) => {
             const at = earned.get(def.id);
             return (
-              <li key={def.id} className={`badge-row${at ? ' is-earned' : ''}`}>
+              <li
+                key={def.id}
+                className={`badge-row${at ? ' is-earned' : ''}`}
+                style={{ '--i': index } as CSSProperties}
+              >
                 <span className="badge-icon" aria-hidden>
                   {def.icon}
                 </span>

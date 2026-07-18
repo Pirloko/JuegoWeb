@@ -84,6 +84,9 @@ export default function AdminLevelsScreen() {
         <Link className="btn-ghost admin-link" to="/admin/seasons">
           Temporadas
         </Link>
+        <Link className="btn-ghost admin-link" to="/admin/sitios">
+          Sitios amigos
+        </Link>
         <label className="admin-field admin-season-select">
           <span>Temporada</span>
           <select value={seasonId} onChange={(e) => setSeasonId(e.target.value)}>

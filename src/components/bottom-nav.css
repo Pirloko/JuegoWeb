@@ -15,6 +15,7 @@
 }
 
 .bottom-nav-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -27,12 +28,48 @@
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.02em;
-  transition: color 0.15s ease, background 0.15s ease;
+  transition:
+    color var(--t-fast) ease,
+    background var(--t-fast) ease,
+    transform var(--t-fast) var(--ease-out);
+}
+
+.bottom-nav-item:active {
+  transform: scale(0.92);
+}
+
+.bottom-nav-item svg {
+  transition: transform var(--t-fast) var(--ease-snap);
 }
 
 .bottom-nav-item.is-active {
   color: var(--accent-2);
   background: rgba(45, 212, 191, 0.08);
+}
+
+.bottom-nav-item.is-active svg {
+  transform: translateY(-1px) scale(1.1);
+}
+
+/* Punto de posición: dónde estás en el mapa */
+.bottom-nav-item::after {
+  content: '';
+  position: absolute;
+  bottom: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-2);
+  opacity: 0;
+  transform: scale(0.4);
+  transition:
+    opacity var(--t-fast) ease,
+    transform var(--t-fast) var(--ease-snap);
+}
+
+.bottom-nav-item.is-active::after {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .bottom-nav-item:focus-visible {

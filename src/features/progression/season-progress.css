@@ -19,10 +19,24 @@
 }
 
 .season-progress-fill {
+  position: relative;
+  overflow: hidden;
   height: 100%;
   border-radius: inherit;
   background: var(--grad-cta);
-  transition: width 0.4s ease;
+  transition: width 0.7s var(--ease-out);
+}
+
+/* Barrido de conquista recorriendo lo ya ganado */
+.season-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 46%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  animation: conquest-sweep 3.4s var(--ease-out) infinite;
 }
 
 .season-progress-tick {
@@ -32,6 +46,7 @@
   width: 2px;
   margin-left: -1px;
   background: rgba(238, 240, 255, 0.22);
+  transition: background var(--t-med) ease;
 }
 
 .season-progress-tick.is-reached {

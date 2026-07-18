@@ -12,9 +12,10 @@
   height: auto;
   max-width: 100%;
   object-fit: contain;
-  /* El PNG trae fondo negro; encaja con --bg-void */
+  /* PNG recortado al contenido, fondo transparente (banda ~3.5:1) */
   user-select: none;
   -webkit-user-drag: none;
+  filter: drop-shadow(0 4px 18px rgba(139, 92, 246, 0.35));
 }
 
 .brand-logo--sm {

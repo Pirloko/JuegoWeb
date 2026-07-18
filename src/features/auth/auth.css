@@ -35,7 +35,13 @@
   margin-top: -8px;
 }
 
+.auth {
+  animation: rise-in var(--t-med) var(--ease-out) both;
+}
+
 .auth-form {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -44,6 +50,17 @@
   border: 1px solid var(--line);
   background: var(--bg-card);
   box-shadow: var(--shadow-card);
+  animation: rise-in var(--t-med) var(--ease-out) 0.08s both;
+}
+
+.auth-form::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.7), rgba(45, 212, 191, 0.7), transparent);
 }
 
 .auth-field {
@@ -71,6 +88,9 @@
   outline: none;
   user-select: text;
   -webkit-user-select: text;
+  transition:
+    border-color var(--t-fast) ease,
+    box-shadow var(--t-fast) ease;
 }
 
 .auth-field input:focus {
@@ -90,6 +110,14 @@
   color: #080b16;
   background: var(--grad-cta);
   cursor: pointer;
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    filter var(--t-fast) ease;
+}
+
+.auth-submit:not(:disabled):active {
+  transform: scale(0.97);
+  filter: brightness(1.08);
 }
 
 .auth-submit:disabled {

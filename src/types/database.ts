@@ -92,6 +92,8 @@ export interface LevelListItem {
   attempts: number;
   /** true si necesita pase (sort_order > 7 y sin entitlement) */
   needsPass: boolean;
+  /** Thumb firmada para fondo del tile (teaser difuminado). */
+  thumbUrl: string;
 }
 
 export interface GalleryItem {

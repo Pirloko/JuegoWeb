@@ -15,6 +15,7 @@ import RequireAdmin from '@/features/admin/RequireAdmin';
 import AdminLevelsScreen from '@/features/admin/AdminLevelsScreen';
 import AdminLevelEditScreen from '@/features/admin/AdminLevelEditScreen';
 import AdminSeasonsScreen from '@/features/admin/AdminSeasonsScreen';
+import AdminFriendSitesScreen from '@/features/admin/AdminFriendSitesScreen';
 import SeasonPassScreen from '@/features/pass/SeasonPassScreen';
 import PaymentOkScreen from '@/features/pass/PaymentOkScreen';
 import MySeasonsScreen from '@/features/pass/MySeasonsScreen';
@@ -104,6 +105,14 @@ export default function App() {
             element={
               <RequireAdmin>
                 <AdminSeasonsScreen />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="/admin/sitios"
+            element={
+              <RequireAdmin>
+                <AdminFriendSitesScreen />
               </RequireAdmin>
             }
           />

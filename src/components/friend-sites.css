@@ -1,0 +1,111 @@
+.friend-sites {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid #2a3150;
+  margin-top: 4px;
+}
+
+.friend-sites-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.friend-sites-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.friend-sites-sub {
+  font-size: 0.82rem;
+  color: #8b93b5;
+}
+
+.friend-sites-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.friend-site-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  background:
+    radial-gradient(ellipse 80% 120% at 0% 0%, rgba(139, 92, 246, 0.18), transparent 55%),
+    #161b32;
+  text-decoration: none;
+  color: inherit;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.22);
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.friend-site-card:active {
+  transform: scale(0.98);
+  border-color: rgba(167, 139, 250, 0.7);
+}
+
+.friend-site-tag {
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+.friend-site-tag.is-amigo {
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.18);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.friend-site-tag.is-recomendado {
+  color: #5eead4;
+  background: rgba(45, 212, 191, 0.12);
+  border: 1px solid rgba(45, 212, 191, 0.35);
+}
+
+.friend-site-name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.friend-site-blurb {
+  font-size: 0.84rem;
+  color: #8b93b5;
+  line-height: 1.35;
+}
+
+.friend-site-go {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #2dd4bf;
+}
+
+.friend-sites.is-compact {
+  margin-top: 8px;
+}
+
+.friend-sites.is-compact .friend-sites-title {
+  font-size: 0.95rem;
+}
+
+.friend-sites.is-compact .friend-site-card {
+  padding: 12px 14px;
+}

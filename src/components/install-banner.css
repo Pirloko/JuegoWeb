@@ -1,52 +1,65 @@
 .install-banner {
-  position: relative;
-  left: auto;
-  right: auto;
-  bottom: auto;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px 18px;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(139, 92, 246, 0.4);
-  background: var(--bg-elevated);
-  box-shadow: var(--shadow-card);
-  max-width: none;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'icon text'
+    'actions actions';
+  align-items: center;
+  gap: 12px 14px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(139, 92, 246, 0.45);
+  background: #161b32;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   margin: 0;
 }
 
+.install-banner-icon {
+  grid-area: icon;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  color: #c4b5fd;
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.45), rgba(45, 212, 191, 0.2));
+}
+
 .install-banner p {
-  font-size: 0.95rem;
+  grid-area: text;
+  margin: 0;
+  font-size: 0.9rem;
   line-height: 1.35;
-  color: var(--text);
-  text-align: center;
+  color: #eef0ff;
+  text-align: left;
   font-weight: 600;
 }
 
 .install-banner-actions {
+  grid-area: actions;
   display: flex;
   gap: 10px;
 }
 
 .install-banner-actions button {
   flex: 1;
-  min-height: 48px;
-  border-radius: var(--radius-sm);
+  min-height: 46px;
+  border-radius: 12px;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   cursor: pointer;
   font-family: var(--font-body);
 }
 
 .install-banner-dismiss {
-  border: 1px solid var(--line-strong);
+  border: 1px solid #3d4570;
   background: transparent;
-  color: var(--text-muted);
+  color: #9aa3c7;
 }
 
 .install-banner-accept {
   border: none;
-  background: var(--grad-cta);
+  background: linear-gradient(90deg, #8b5cf6 0%, #22d3ee 100%);
   color: #080b16;
 }

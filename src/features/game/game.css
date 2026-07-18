@@ -93,10 +93,15 @@
   justify-content: center;
   padding: 24px;
   background: rgba(8, 11, 22, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fade-in 0.25s ease both;
 }
 
 .result-card,
 .fs-card {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -107,6 +112,18 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+  animation: pop-in 0.32s var(--ease-snap) 0.06s both;
+}
+
+/* Línea de luz superior, misma firma que la carta hero */
+.result-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12%;
+  right: 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(167, 139, 250, 0.7), rgba(45, 212, 191, 0.7), transparent);
 }
 
 .result-card h2,
@@ -193,6 +210,19 @@
   font-size: 0.85rem;
   color: var(--text);
   text-align: left;
+  animation: rise-in var(--t-med) var(--ease-snap) both;
+}
+
+.result-badge:nth-child(1) {
+  animation-delay: 0.35s;
+}
+
+.result-badge:nth-child(2) {
+  animation-delay: 0.5s;
+}
+
+.result-badge:nth-child(3) {
+  animation-delay: 0.65s;
 }
 
 .result-badge strong {
@@ -221,4 +251,24 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--line);
   background: var(--bg-panel);
+  animation: fade-in 0.5s ease 0.2s both;
+}
+
+.btn-primary,
+.hud-exit,
+.hud-fs {
+  transition:
+    transform var(--t-fast) var(--ease-out),
+    filter var(--t-fast) ease,
+    border-color var(--t-fast) ease;
+}
+
+.btn-primary:active,
+.hud-exit:active,
+.hud-fs:active {
+  transform: scale(0.95);
+}
+
+.btn-primary:active {
+  filter: brightness(1.08);
 }

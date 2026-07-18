@@ -35,23 +35,28 @@ export async function fetchLevelsWithProgress(seasonId: string): Promise<LevelLi
   if (progressError) throw new Error(progressError.message);
 
   const byLevel = new Map((progress as ProgressRow[] | null)?.map((p) => [p.level_id, p]) ?? []);
+  const rows = (levels as LevelRow[] | null) ?? [];
 
-  return ((levels as LevelRow[] | null) ?? []).map((level) => {
-    const p = byLevel.get(level.id);
-    const needsPass = level.sort_order > FREE_LEVEL_MAX && !owned;
-    let status: ProgressStatus = p?.status ?? 'locked';
-    if (needsPass && status !== 'completed') {
-      status = 'gated';
-    }
-    return {
-      level,
-      status,
-      bestPct: p?.best_pct ?? null,
-      bestTimeMs: p?.best_time_ms ?? null,
-      attempts: p?.attempts ?? 0,
-      needsPass,
-    };
-  });
+  return Promise.all(
+    rows.map(async (level) => {
+      const p = byLevel.get(level.id);
+      const needsPass = level.sort_order > FREE_LEVEL_MAX && !owned;
+      let status: ProgressStatus = p?.status ?? 'locked';
+      if (needsPass && status !== 'completed') {
+        status = 'gated';
+      }
+      const thumbUrl = await resolveLevelImageUrl(level.thumb_path, level.sort_order);
+      return {
+        level,
+        status,
+        bestPct: p?.best_pct ?? null,
+        bestTimeMs: p?.best_time_ms ?? null,
+        attempts: p?.attempts ?? 0,
+        needsPass,
+        thumbUrl,
+      };
+    }),
+  );
 }
 
 export async function fetchPlayableLevel(levelId: string): Promise<{
