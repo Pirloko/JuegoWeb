@@ -83,6 +83,42 @@ export class TerritorySystem {
   }
 
   /**
+   * Celda libre más cercana a la dada (BFS 4-conectado), o null si no hay
+   * ninguna dentro del radio. Se usa para anclar el flood-fill cuando el
+   * centro de un enemigo cae en una celda no-libre en el instante del cierre.
+   */
+  nearestFreeCell(cell: Cell, maxRadius = 6): Cell | null {
+    const start: Cell = {
+      col: Math.min(Math.max(cell.col, 0), this.cols - 1),
+      row: Math.min(Math.max(cell.row, 0), this.rows - 1),
+    };
+    if (this.stateAt(start.col, start.row) === CellState.Free) return start;
+
+    const visited = new Set<number>([this.idx(start.col, start.row)]);
+    let frontier: Cell[] = [start];
+    for (let radius = 0; radius < maxRadius; radius++) {
+      const next: Cell[] = [];
+      for (const current of frontier) {
+        for (const [dc, dr] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ] as const) {
+          const nc = current.col + dc;
+          const nr = current.row + dr;
+          if (!this.inBounds(nc, nr) || visited.has(this.idx(nc, nr))) continue;
+          if (this.stateAt(nc, nr) === CellState.Free) return { col: nc, row: nr };
+          visited.add(this.idx(nc, nr));
+          next.push({ col: nc, row: nr });
+        }
+      }
+      frontier = next;
+    }
+    return null;
+  }
+
+  /**
    * Cierra el trail: trail → conquistado, y toda región libre que ningún
    * enemigo alcanza (flood-fill 4-conectado) también se conquista.
    * Devuelve las celdas recién conquistadas para repintar.
@@ -98,11 +134,13 @@ export class TerritorySystem {
     this.trail = [];
 
     // Flood-fill de lo alcanzable por enemigos sobre celdas libres.
+    // Si el centro del enemigo no está en celda libre, ancla a la más cercana.
     const reachable = new Uint8Array(this.cols * this.rows);
     const stack: number[] = [];
-    for (const cell of enemyCells) {
-      if (this.stateAt(cell.col, cell.row) !== CellState.Free) continue;
-      const i = this.idx(cell.col, cell.row);
+    for (const enemyCell of enemyCells) {
+      const seed = this.nearestFreeCell(enemyCell);
+      if (!seed) continue;
+      const i = this.idx(seed.col, seed.row);
       if (!reachable[i]) {
         reachable[i] = 1;
         stack.push(i);

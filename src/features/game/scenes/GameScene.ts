@@ -45,9 +45,12 @@ export class GameScene extends Phaser.Scene {
     this.lastCell = this.cellOf(this.player.x, this.player.y);
 
     const stateAtPixel = (x: number, y: number) => this.stateAtPixel(x, y);
-    for (const enemyConfig of this.level.enemies) {
-      this.enemies.push(new Enemy(this, GAME_WIDTH / 2, GAME_HEIGHT * 0.35, enemyConfig.speed, stateAtPixel));
-    }
+    const enemyCount = this.level.enemies.length;
+    this.level.enemies.forEach((enemyConfig, i) => {
+      const fx = enemyCount === 1 ? 0.5 : 0.25 + (0.5 * i) / (enemyCount - 1);
+      const fy = 0.3 + (i % 2) * 0.15;
+      this.enemies.push(new Enemy(this, GAME_WIDTH * fx, GAME_HEIGHT * fy, enemyConfig.speed, stateAtPixel));
+    });
 
     this.joystick = new VirtualJoystick(this);
     this.cursors = this.input.keyboard?.createCursorKeys();
@@ -104,7 +107,9 @@ export class GameScene extends Phaser.Scene {
     const state = this.territory.stateAt(cell.col, cell.row);
 
     if (state === CellState.Trail) {
-      this.loseLife(time);
+      // Chocar con el propio trail es letal siempre: la invulnerabilidad
+      // protege de enemigos, no de suicidios.
+      this.loseLife(time, true);
       return;
     }
 
@@ -118,6 +123,7 @@ export class GameScene extends Phaser.Scene {
       for (const conqueredCell of conquered) {
         this.paintCell(conqueredCell.col, conqueredCell.row, COLORS.conquered);
       }
+      this.relocateTrappedEnemies();
       gameEvents.emit('game:progress', { conqueredPct: pct });
       if (pct >= this.level.targetPct) {
         this.finish(true);
@@ -164,8 +170,21 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private loseLife(time: number): void {
-    if (time < this.invulnerableUntil) return;
+  /**
+   * Un enemigo puede quedar sobre territorio recién conquistado si el cierre
+   * ocurre en el mismo frame en que tocaba el trail: lo devuelve al área libre.
+   */
+  private relocateTrappedEnemies(): void {
+    for (const enemy of this.enemies) {
+      const cell = this.cellOf(enemy.x, enemy.y);
+      if (this.territory.stateAt(cell.col, cell.row) === CellState.Free) continue;
+      const free = this.territory.nearestFreeCell(cell, 12);
+      if (free) enemy.setPosition((free.col + 0.5) * CELL, (free.row + 0.5) * CELL);
+    }
+  }
+
+  private loseLife(time: number, force = false): void {
+    if (!force && time < this.invulnerableUntil) return;
 
     this.lives -= 1;
     this.cameras.main.shake(150, 0.008);

@@ -44,18 +44,23 @@ Complejidad O(celdas) por cierre; con un grid de 90×140 es despreciable.
 
 ## Casos límite (checklist de pruebas de la FASE 3)
 
-- [ ] El jugador toca su propio trail → pierde vida, trail se borra, vuelve al
-      último punto seguro.
-- [ ] Un enemigo toca el trail activo → misma consecuencia.
-- [ ] Ruta mínima (salir y volver a 1 celda de distancia) → no conquista nada
-      y no rompe el estado.
-- [ ] Ruta que encierra al enemigo por ambos lados → se conquistan ambas
-      regiones vacías, la del enemigo sobrevive.
-- [ ] Múltiples enemigos en regiones distintas → ninguna de sus regiones se
-      conquista.
-- [ ] Cierre contra una península ya conquistada (no solo contra el borde).
-- [ ] Power-up bomba explotando sobre trail activo del jugador.
-- [ ] % objetivo alcanzado en mitad de un cierre → victoria una sola vez.
+Los marcados con (test) están cubiertos por `TerritorySystem.test.ts`.
+
+- [x] El jugador toca su propio trail → pierde vida siempre (ignora el
+      periodo de gracia post-respawn), trail se borra, vuelve al spawn.
+- [x] Un enemigo toca el trail activo → vida perdida (muestreo de 5 puntos
+      del círculo del enemigo por frame).
+- [x] (test) Ruta mínima de 1 celda → conquista solo esa celda, estado sano.
+- [x] (test) Ruta que encierra al enemigo por ambos lados → ambas regiones
+      vacías caen, la del enemigo sobrevive.
+- [x] (test) Múltiples enemigos en regiones distintas → ninguna se conquista.
+- [x] (test) Cierre contra una península ya conquistada (no solo el borde).
+- [x] (test) Enemigo con centro en celda no-libre (o fuera del grid) en el
+      instante del cierre → flood-fill anclado a la libre más cercana; y si
+      queda atrapado en lo conquistado, la escena lo recoloca.
+- [ ] Power-up bomba explotando sobre trail activo del jugador (FASE 5).
+- [x] % objetivo alcanzado en mitad de un cierre → victoria una sola vez
+      (flag `finished` + corte del update).
 
 ## Enemigos
 
