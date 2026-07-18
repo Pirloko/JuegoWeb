@@ -9,4 +9,5 @@ export const PROTOTYPE_LEVEL: LevelConfig = {
   lives: 3,
   playerSpeed: 280,
   enemies: [{ type: 'basic', speed: 200 }],
+  imageUrl: '/levels/level-1.png',
 };

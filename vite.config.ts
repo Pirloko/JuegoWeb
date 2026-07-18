@@ -29,9 +29,21 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        // Las imágenes de nivel NO van al precache del shell: se cachean en
+        // runtime al jugar cada nivel (ver docs/MOBILE.md).
+        globPatterns: ['**/*.{js,css,html,svg,woff2}', 'icons/*.png'],
         // Phaser es grande; subir el límite de precache por encima del bundle
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        runtimeCaching: [
+          {
+            urlPattern: /\/levels\/.*\.(png|webp|jpg)$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'level-images',
+              expiration: { maxEntries: 40 },
+            },
+          },
+        ],
       },
     }),
   ],

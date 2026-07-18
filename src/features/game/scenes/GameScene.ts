@@ -1,13 +1,16 @@
 import Phaser from 'phaser';
 import type { LevelConfig, LevelResultStats } from '@/types/level';
-import { BORDER_CELLS, CELL, COLORS, COLS, GAME_HEIGHT, GAME_WIDTH, ROWS } from '../core/constants';
+import { BORDER_CELLS, CELL, COLS, GAME_HEIGHT, GAME_WIDTH, ROWS } from '../core/constants';
 import { gameEvents } from '../core/GameEvents';
 import { CellState, TerritorySystem, type Cell } from '../systems/TerritorySystem';
+import { RevealSystem } from '../systems/RevealSystem';
 import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { VirtualJoystick } from '../input/VirtualJoystick';
 
 const INVULNERABLE_MS = 1500;
+const LEVEL_IMAGE_KEY = 'level-image';
+const WIN_REVEAL_MS = 900;
 
 type Dir = { x: number; y: number };
 
@@ -17,7 +20,7 @@ type Dir = { x: number; y: number };
  */
 export class GameScene extends Phaser.Scene {
   private territory!: TerritorySystem;
-  private territoryRT!: Phaser.GameObjects.RenderTexture;
+  private reveal!: RevealSystem;
   private player!: Player;
   private enemies: Enemy[] = [];
   private joystick!: VirtualJoystick;
@@ -36,10 +39,24 @@ export class GameScene extends Phaser.Scene {
     super('game');
   }
 
+  preload(): void {
+    this.load.image(LEVEL_IMAGE_KEY, this.level.imageUrl);
+  }
+
   create(): void {
+    // Fallback si la imagen no cargó (sin red, URL rota): degradado generado.
+    // El gameplay nunca depende de que la imagen exista.
+    if (!this.textures.exists(LEVEL_IMAGE_KEY)) {
+      const g = this.make.graphics({}, false);
+      g.fillGradientStyle(0x1e1b4b, 0x7c3aed, 0x7c3aed, 0xf472b6, 1);
+      g.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      g.generateTexture(LEVEL_IMAGE_KEY, GAME_WIDTH, GAME_HEIGHT);
+      g.destroy();
+    }
+
     this.territory = new TerritorySystem(COLS, ROWS, BORDER_CELLS);
-    this.territoryRT = this.add.renderTexture(0, 0, GAME_WIDTH, GAME_HEIGHT).setOrigin(0);
-    this.paintInitial();
+    this.reveal = new RevealSystem(this, LEVEL_IMAGE_KEY);
+    this.reveal.paintAll(this.territory);
 
     this.player = new Player(this, this.spawnPoint.x, this.spawnPoint.y, this.level.playerSpeed);
     this.lastCell = this.cellOf(this.player.x, this.player.y);
@@ -115,13 +132,13 @@ export class GameScene extends Phaser.Scene {
 
     if (state === CellState.Free) {
       this.territory.markTrail(cell);
-      this.paintCell(cell.col, cell.row, COLORS.trail);
+      this.reveal.setCellState(cell.col, cell.row, CellState.Trail);
     } else if (this.territory.hasTrail) {
       // Vuelta a zona segura con trail activo: cierre de región.
       const enemyCells = this.enemies.map((enemy) => this.cellOf(enemy.x, enemy.y));
       const { conquered, pct } = this.territory.closeTrail(enemyCells);
       for (const conqueredCell of conquered) {
-        this.paintCell(conqueredCell.col, conqueredCell.row, COLORS.conquered);
+        this.reveal.setCellState(conqueredCell.col, conqueredCell.row, CellState.Conquered);
       }
       this.relocateTrappedEnemies();
       gameEvents.emit('game:progress', { conqueredPct: pct });
@@ -189,7 +206,7 @@ export class GameScene extends Phaser.Scene {
     this.lives -= 1;
     this.cameras.main.shake(150, 0.008);
     for (const cell of this.territory.clearTrail()) {
-      this.paintCell(cell.col, cell.row, COLORS.free);
+      this.reveal.setCellState(cell.col, cell.row, CellState.Free);
     }
     gameEvents.emit('game:life-lost', { livesLeft: this.lives });
 
@@ -220,25 +237,13 @@ export class GameScene extends Phaser.Scene {
       timeMs: Math.round(this.time.now - this.startTime),
       livesLeft: this.lives,
     };
-    gameEvents.emit(won ? 'game:completed' : 'game:failed', stats);
-  }
-
-  // ── Render del grid ──────────────────────────────────────────────────
-
-  private paintInitial(): void {
-    this.territoryRT.fill(COLORS.conquered, 1, 0, 0, GAME_WIDTH, GAME_HEIGHT);
-    this.territoryRT.fill(
-      COLORS.free,
-      1,
-      BORDER_CELLS * CELL,
-      BORDER_CELLS * CELL,
-      GAME_WIDTH - 2 * BORDER_CELLS * CELL,
-      GAME_HEIGHT - 2 * BORDER_CELLS * CELL,
-    );
-  }
-
-  private paintCell(col: number, row: number, color: number): void {
-    this.territoryRT.fill(color, 1, col * CELL, row * CELL, CELL, CELL);
+    if (won) {
+      // Revelado completo antes de mostrar el modal de resultado.
+      this.reveal.celebrate();
+      this.time.delayedCall(WIN_REVEAL_MS, () => gameEvents.emit('game:completed', stats));
+    } else {
+      gameEvents.emit('game:failed', stats);
+    }
   }
 
   // ── Utilidades ───────────────────────────────────────────────────────

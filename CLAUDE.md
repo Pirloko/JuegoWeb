@@ -5,10 +5,10 @@ Arcade tipo Qix/Gals Panic: React (shell) + Phaser 3 (gameplay) + TypeScript
 
 ## Estado
 
-Fase 3 completada (sistema de conquista endurecido: suite Vitest con el
-checklist de casos límite de docs/GAMEPLAY.md, anclaje de enemigos al cierre,
-recolocación de enemigos atrapados, trail propio letal sin gracia).
-Siguiente: Fase 4 (revelado de imagen con máscara desde el grid).
+Fase 4 completada (revelado de imagen: RevealSystem con capa de cobertura
+perforada por celda conquistada, imagen por nivel vía config.imageUrl con
+fallback offline, revelado completo al ganar, cache runtime de imágenes en
+el SW). Siguiente: Fase 5 (power-up bomba).
 El roadmap y el alcance congelado están en `docs/ROADMAP.md`.
 
 ## Comandos
