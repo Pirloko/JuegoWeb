@@ -11,6 +11,10 @@ import {
   updateLevel,
   uploadLevelImage,
 } from '@/services/supabase/admin';
+import {
+  formatBytes,
+  prepareLevelImage,
+} from '@/services/images/prepareLevelImage';
 import './admin.css';
 
 export default function AdminLevelEditScreen() {
@@ -27,6 +31,8 @@ export default function AdminLevelEditScreen() {
   const [config, setConfig] = useState<LevelConfigJson>(defaultLevelConfig);
   const [fullFile, setFullFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
+  const [existingImagePath, setExistingImagePath] = useState<string | null>(null);
+  const [existingThumbPath, setExistingThumbPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +86,8 @@ export default function AdminLevelEditScreen() {
         setSortOrder(row.sort_order);
         setIsActive(row.is_active);
         setSeasonId(row.season_id);
+        setExistingImagePath(row.image_path);
+        setExistingThumbPath(row.thumb_path);
         setConfig({ ...defaultLevelConfig(), ...row.config });
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Error al cargar');
@@ -104,28 +112,54 @@ export default function AdminLevelEditScreen() {
 
     try {
       if (!seasonId) throw new Error('Elige una temporada');
-      const paths = pathsForSortOrder(sortOrder);
+      if (!name.trim()) throw new Error('Nombre requerido');
+
+      const defaultPaths = pathsForSortOrder(sortOrder);
+      const compressNotes: string[] = [];
+
+      async function uploadPrepared(kind: 'full' | 'thumb', file: File, basePath: string) {
+        setInfo(`Comprimiendo ${kind === 'full' ? 'imagen' : 'thumbnail'}…`);
+        const prepared = await prepareLevelImage(file, kind);
+        const finalPath = basePath.replace(/\.(png|webp|jpe?g)$/i, `.${prepared.ext}`);
+        await uploadLevelImage(finalPath, prepared.blob, prepared.contentType);
+        compressNotes.push(
+          `${kind}: ${formatBytes(prepared.originalBytes)} → ${formatBytes(prepared.finalBytes)}`,
+        );
+        return finalPath;
+      }
+
+      let imagePath = existingImagePath ?? defaultPaths.image_path;
+      let thumbPath = existingThumbPath ?? defaultPaths.thumb_path;
+
+      if (fullFile) {
+        imagePath = await uploadPrepared('full', fullFile, defaultPaths.image_path);
+      }
+      if (thumbFile) {
+        thumbPath = await uploadPrepared('thumb', thumbFile, defaultPaths.thumb_path);
+      } else if (fullFile && (isNew || !existingThumbPath)) {
+        thumbPath = await uploadPrepared('thumb', fullFile, defaultPaths.thumb_path);
+      }
+
       const payload = {
         season_id: seasonId,
         name: name.trim(),
         sort_order: sortOrder,
         is_active: isActive,
         config,
-        ...paths,
+        image_path: imagePath,
+        thumb_path: thumbPath,
       };
 
-      if (!payload.name) throw new Error('Nombre requerido');
-
+      setInfo('Guardando nivel…');
       const row = isNew ? await createLevel(payload) : await updateLevel(levelId!, payload);
 
-      if (fullFile) await uploadLevelImage(paths.image_path, fullFile);
-      if (thumbFile) await uploadLevelImage(paths.thumb_path, thumbFile);
-      // Si solo suben full, copiar también como thumb si es nivel nuevo sin thumb.
-      if (fullFile && !thumbFile && isNew) {
-        await uploadLevelImage(paths.thumb_path, fullFile);
-      }
-
-      setInfo('Guardado');
+      setExistingImagePath(imagePath);
+      setExistingThumbPath(thumbPath);
+      setFullFile(null);
+      setThumbFile(null);
+      setInfo(
+        compressNotes.length ? `Guardado · ${compressNotes.join(' · ')}` : 'Guardado',
+      );
       if (isNew) {
         navigate(`/admin/levels/${row.id}`, { replace: true });
       }
@@ -433,7 +467,8 @@ export default function AdminLevelEditScreen() {
         <fieldset className="admin-fieldset">
           <legend>Imágenes (Storage)</legend>
           <p className="admin-hint">
-            Paths: level-{sortOrder}/full.png y thumb.png · máx. 400 KB
+            Sube PNG/JPEG/WebP de hasta 15 MB. Se convierte a WebP y se comprime bajo 400 KB
+            automáticamente (full ≤1280px, thumb ≤480px). Paths: level-{sortOrder}/full.webp
           </p>
           <label className="admin-field">
             <span>Imagen completa</span>

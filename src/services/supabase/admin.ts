@@ -1,8 +1,8 @@
 import { getSupabase } from '@/services/supabase/client';
 import type { LevelConfigJson, LevelRow, SeasonRow } from '@/types/database';
+import { LEVEL_IMAGE_MAX_BYTES } from '@/services/images/prepareLevelImage';
 
 const BUCKET = 'level-images';
-const MAX_BYTES = 400 * 1024;
 
 export function defaultLevelConfig(): LevelConfigJson {
   return {
@@ -24,8 +24,8 @@ export function defaultLevelConfig(): LevelConfigJson {
 
 export function pathsForSortOrder(sortOrder: number): { image_path: string; thumb_path: string } {
   return {
-    image_path: `level-${sortOrder}/full.png`,
-    thumb_path: `level-${sortOrder}/thumb.png`,
+    image_path: `level-${sortOrder}/full.webp`,
+    thumb_path: `level-${sortOrder}/thumb.webp`,
   };
 }
 
@@ -133,18 +133,15 @@ export async function deleteLevel(id: string): Promise<void> {
 
 export async function uploadLevelImage(
   path: string,
-  file: File,
+  file: Blob,
+  contentType: string = 'image/webp',
 ): Promise<void> {
-  if (file.size > MAX_BYTES) {
-    throw new Error(`Imagen demasiado pesada (máx. ${MAX_BYTES / 1024} KB)`);
-  }
-  const type = file.type;
-  if (!['image/png', 'image/webp', 'image/jpeg'].includes(type)) {
-    throw new Error('Formato no permitido (png, webp o jpeg)');
+  if (file.size > LEVEL_IMAGE_MAX_BYTES) {
+    throw new Error(`Imagen demasiado pesada (máx. ${LEVEL_IMAGE_MAX_BYTES / 1024} KB)`);
   }
 
   const { error } = await getSupabase().storage.from(BUCKET).upload(path, file, {
-    contentType: type,
+    contentType,
     upsert: true,
   });
   if (error) throw new Error(error.message);
