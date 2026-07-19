@@ -43,6 +43,19 @@ export async function fetchSeason(id: string): Promise<SeasonRow | null> {
   return data as SeasonRow | null;
 }
 
+/** Próxima temporada por starts_at (teaser T+1). Incluye inactivas. */
+export async function fetchNextSeason(after: SeasonRow): Promise<SeasonRow | null> {
+  const { data, error } = await getSupabase()
+    .from('seasons')
+    .select('*')
+    .gt('starts_at', after.starts_at)
+    .order('starts_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as SeasonRow) ?? null;
+}
+
 export async function fetchMyEntitlements(): Promise<SeasonEntitlement[]> {
   const { data, error } = await getSupabase().from('season_entitlements').select('*');
   if (error) throw new Error(error.message);
@@ -56,21 +69,38 @@ export async function fetchMySubscription(): Promise<SubscriptionRow | null> {
 }
 
 export async function hasActiveSubscription(): Promise<boolean> {
-  const sub = await fetchMySubscription();
-  return sub?.status === 'authorized';
-}
-
-/** Acceso de pago: suscripción activa o entitlement legacy de esa temporada. */
-export async function hasSeasonPass(seasonId: string): Promise<boolean> {
-  if (await hasActiveSubscription()) return true;
-
-  const { data, error } = await getSupabase()
-    .from('season_entitlements')
-    .select('season_id')
-    .eq('season_id', seasonId)
-    .maybeSingle();
+  const { data, error } = await getSupabase().rpc('has_active_subscription');
   if (error) throw new Error(error.message);
   return Boolean(data);
+}
+
+/** Acceso de pago vigente (sub con periodo activo o entitlement no vencido). */
+export async function hasSeasonPass(seasonId: string): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc('has_season_pass', {
+    p_season_id: seasonId,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
+/** Fecha de fin de pase (sub o entitlement), o null si no hay pase vigente. */
+export async function fetchPassExpiresAt(seasonId: string): Promise<string | null> {
+  const { data, error } = await getSupabase().rpc('pass_expires_at', {
+    p_season_id: seasonId,
+  });
+  if (error) throw new Error(error.message);
+  return typeof data === 'string' ? data : data ? String(data) : null;
+}
+
+export function formatPassExpiry(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString('es-CL', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 export function seasonPricing(season: SeasonRow) {
@@ -81,6 +111,33 @@ export function seasonPricing(season: SeasonRow) {
     effectiveClp: effectivePriceClp(season),
     onOffer,
   };
+}
+
+/** ¿El jugador liberó esta temporada por ★ de la anterior? (RPC Fase 2). */
+export async function canAccessSeason(seasonId: string): Promise<boolean> {
+  const { data, error } = await getSupabase().rpc('can_access_season', {
+    p_season_id: seasonId,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
+/** ★ contables del usuario en una temporada (RPC). */
+export async function fetchSeasonCountableStars(seasonId: string): Promise<number> {
+  const { data, error } = await getSupabase().rpc('season_countable_stars', {
+    p_season_id: seasonId,
+  });
+  if (error) throw new Error(error.message);
+  return typeof data === 'number' ? data : Number(data) || 0;
+}
+
+/** Techo free de ★ (3 × niveles imagen). */
+export async function fetchSeasonStarCapFree(seasonId: string): Promise<number> {
+  const { data, error } = await getSupabase().rpc('season_star_cap_free', {
+    p_season_id: seasonId,
+  });
+  if (error) throw new Error(error.message);
+  return typeof data === 'number' ? data : Number(data) || 0;
 }
 
 /** true si el cobro usa link estático (sin webhook automático). */

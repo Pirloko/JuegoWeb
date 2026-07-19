@@ -11,9 +11,7 @@ import { Player } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { VirtualJoystick } from '../input/VirtualJoystick';
 
-const INVULNERABLE_MS = 1500;
 const LEVEL_IMAGE_KEY = 'level-image';
-const WIN_REVEAL_MS = 900;
 
 type Dir = { x: number; y: number };
 
@@ -33,14 +31,16 @@ export class GameScene extends Phaser.Scene {
 
   private lastCell!: Cell;
   private lastMoveDir: Dir = { x: 0, y: 0 };
-  private lives = 0;
   private startTime = 0;
-  private invulnerableUntil = 0;
+  /** Deadline del cronómetro (Phaser time). 0 = sin límite. */
+  private deadlineMs = 0;
+  private lastEmittedRemainSec = -1;
   /** Escudo de power-up: protege el cuerpo, no el trail. */
   private shieldUntil = 0;
   private speedBoostUntil = 0;
   private shieldFx?: Phaser.GameObjects.Arc;
   private finished = false;
+  private offReveal?: () => void;
   private readonly spawnPoint = { x: GAME_WIDTH / 2, y: GAME_HEIGHT - CELL * 1.5 };
 
   constructor(private readonly level: LevelConfig) {
@@ -95,11 +95,25 @@ export class GameScene extends Phaser.Scene {
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.wasd = this.input.keyboard?.addKeys('W,A,S,D') as typeof this.wasd;
 
-    this.lives = this.level.lives;
     this.startTime = this.time.now;
+    const limitSec = this.level.timeLimitSec;
+    this.deadlineMs = limitSec > 0 ? this.startTime + limitSec * 1000 : 0;
+    this.lastEmittedRemainSec = -1;
+    this.emitTime(this.time.now);
+    this.offReveal = gameEvents.on('game:reveal', () => {
+      if (this.finished) this.reveal.celebrate();
+    });
+  }
+
+  shutdown(): void {
+    this.offReveal?.();
+    this.offReveal = undefined;
   }
 
   override update(time: number, delta: number): void {
+    if (this.finished) return;
+
+    this.tickTimer(time);
     if (this.finished) return;
 
     const dir = this.readDirection();
@@ -135,6 +149,7 @@ export class GameScene extends Phaser.Scene {
       freezeEnemies: (durationMs) => this.freezeEnemies(durationMs),
       boostSpeed: (multiplier, durationMs) => this.boostSpeed(multiplier, durationMs),
       addLives: (amount) => this.addLives(amount),
+      addTime: (addSec) => this.addTime(addSec),
     };
   }
 
@@ -154,9 +169,36 @@ export class GameScene extends Phaser.Scene {
     this.player.setFillStyle(0xfde68a);
   }
 
+  /** Legacy power-up corazón: ya no hay vidas in-match → da tiempo. */
   private addLives(amount: number): void {
-    this.lives += amount;
-    gameEvents.emit('game:life-lost', { livesLeft: this.lives });
+    this.addTime(Math.max(1, amount) * 15);
+  }
+
+  private addTime(addSec: number): void {
+    if (this.deadlineMs <= 0 || addSec <= 0) return;
+    this.deadlineMs += addSec * 1000;
+    this.lastEmittedRemainSec = -1;
+    this.emitTime(this.time.now);
+  }
+
+  private tickTimer(time: number): void {
+    if (this.deadlineMs <= 0) return;
+    this.emitTime(time);
+    if (time >= this.deadlineMs) {
+      this.finish(false);
+    }
+  }
+
+  private emitTime(time: number): void {
+    if (this.deadlineMs <= 0) {
+      gameEvents.emit('game:time', { remainingMs: 0, limited: false });
+      return;
+    }
+    const remainingMs = Math.max(0, Math.round(this.deadlineMs - time));
+    const remainSec = Math.ceil(remainingMs / 1000);
+    if (remainSec === this.lastEmittedRemainSec) return;
+    this.lastEmittedRemainSec = remainSec;
+    gameEvents.emit('game:time', { remainingMs, limited: true });
   }
 
   private tickBuffs(time: number): void {
@@ -269,9 +311,7 @@ export class GameScene extends Phaser.Scene {
   private checkEnemyCollisions(time: number): void {
     const playerState = this.territory.stateAt(this.lastCell.col, this.lastCell.row);
     const bodyProtected =
-      playerState === CellState.Conquered ||
-      time < this.invulnerableUntil ||
-      time < this.shieldUntil;
+      playerState === CellState.Conquered || time < this.shieldUntil;
 
     for (const enemy of this.enemies) {
       if (this.territory.hasTrail) {
@@ -317,11 +357,11 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Un golpe letal = derrota (corazones se restan en servidor al fallar). */
   private loseLife(time: number, force = false): void {
-    if (!force && time < this.invulnerableUntil) return;
+    if (this.finished) return;
     if (!force && time < this.shieldUntil) return;
 
-    this.lives -= 1;
     this.shieldUntil = 0;
     if (this.shieldFx) {
       this.shieldFx.destroy();
@@ -331,40 +371,23 @@ export class GameScene extends Phaser.Scene {
     for (const cell of this.territory.clearTrail()) {
       this.reveal.setCellState(cell.col, cell.row, CellState.Free);
     }
-    gameEvents.emit('game:life-lost', { livesLeft: this.lives });
-
-    if (this.lives <= 0) {
-      this.finish(false);
-      return;
-    }
-
-    this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
-    this.lastCell = this.cellOf(this.spawnPoint.x, this.spawnPoint.y);
-    this.lastMoveDir = { x: 0, y: 0 };
-    this.invulnerableUntil = time + INVULNERABLE_MS;
-    this.tweens.add({
-      targets: this.player,
-      alpha: 0.25,
-      duration: 125,
-      yoyo: true,
-      repeat: 5,
-      onComplete: () => this.player.setAlpha(1),
-    });
+    gameEvents.emit('game:life-lost', { livesLeft: 0 });
+    this.finish(false);
   }
 
   private finish(won: boolean): void {
+    if (this.finished) return;
     this.finished = true;
     this.powerUps.stop();
     const stats: LevelResultStats = {
       conqueredPct: this.territory.conqueredPct,
       targetPct: this.level.targetPct,
       timeMs: Math.round(this.time.now - this.startTime),
-      livesLeft: this.lives,
+      livesLeft: won ? 1 : 0,
     };
     if (won) {
-      // Revelado completo antes de mostrar el modal de resultado.
-      this.reveal.celebrate();
-      this.time.delayedCall(WIN_REVEAL_MS, () => gameEvents.emit('game:completed', stats));
+      // El revelado lo dispara React con game:reveal (botón "Revelar imagen").
+      gameEvents.emit('game:completed', stats);
     } else {
       gameEvents.emit('game:failed', stats);
     }

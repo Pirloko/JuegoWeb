@@ -1,42 +1,35 @@
 import { getSupabase } from '@/services/supabase/client';
+import type { EnergyStatus } from '@/services/supabase/energy';
 
 export type GameSessionOutcome = 'playing' | 'completed' | 'failed' | 'abandoned';
 
-export async function startGameSession(levelId: string): Promise<string | null> {
-  const supabase = getSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
-  const { data, error } = await supabase
-    .from('game_sessions')
-    .insert({
-      user_id: user.id,
-      level_id: levelId,
-      outcome: 'playing',
-    })
-    .select('id')
-    .single();
-
-  if (error || !data?.id) {
-    console.warn('[sessions] start', error?.message);
-    return null;
-  }
-  return data.id as string;
+function parseEndEnergy(raw: unknown): EnergyStatus | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (o.hearts == null) return null;
+  return {
+    hearts: Number(o.hearts) || 0,
+    max: Number(o.max) || 5,
+    refillSec: Number(o.refillSec) || 1200,
+    nextRefillAt: o.nextRefillAt != null ? String(o.nextRefillAt) : null,
+    energyWaived: Boolean(o.energyWaived),
+    sessionId: o.sessionId != null ? String(o.sessionId) : null,
+  };
 }
 
 export async function endGameSession(
   sessionId: string,
   outcome: Exclude<GameSessionOutcome, 'playing'>,
   durationMs: number,
-): Promise<void> {
-  const { error } = await getSupabase().rpc('end_game_session', {
+): Promise<EnergyStatus | null> {
+  const { data, error } = await getSupabase().rpc('end_game_session', {
     p_session_id: sessionId,
     p_outcome: outcome,
     p_duration_ms: Math.max(0, Math.floor(durationMs)),
   });
   if (error) {
     console.warn('[sessions] end', error.message);
+    return null;
   }
+  return parseEndEnergy(data);
 }

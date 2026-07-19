@@ -23,12 +23,13 @@ src/features/game/powerups/
 ├── ShieldEffect.ts
 ├── FreezeEffect.ts
 ├── SpeedEffect.ts
-└── HeartEffect.ts
+├── HeartEffect.ts
+└── ClockEffect.ts
 ```
 - `PowerUpSystem` (systems/): spawn por config y recogida; agnóstico al tipo.
 - `PowerUpContext`: lo único que un efecto conoce de la escena — `territory`,
   `cell`, `getEnemies()`, `killEnemy()`, `conquer(cells)`, `grantShield`,
-  `freezeEnemies`, `boostSpeed`, `addLives` y `scene` para FX.
+  `freezeEnemies`, `boostSpeed`, `addLives`, `addTime` y `scene` para FX.
 - El registro es un mapped type sobre `PowerUpConfig['type']`: declarar un
   tipo nuevo en el union sin registrar su efecto **no compila**.
 - Añadir un power-up = clase de efecto + entrada en el registro + config
@@ -70,6 +71,7 @@ Detalles (decisiones tomadas en la FASE 5):
 | Congelación | Pausa enemigos N ms | ✓ |
 | Velocidad | Multiplicador de velocidad del jugador (cap 1.6×) | ✓ |
 | Corazón | Suma vidas (`params.lives`) | ✓ |
+| Reloj | Suma segundos al cronómetro (`params.addSec`) | ✓ |
 | Imán | Atrae power-ups cercanos | Pendiente |
 | Fuego | Zona de daño temporal | Pendiente |
 

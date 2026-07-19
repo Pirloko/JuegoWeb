@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   fetchMyEntitlements,
   fetchMySubscription,
+  fetchPassExpiresAt,
   fetchSeasons,
+  formatPassExpiry,
   hasActiveSubscription,
   seasonPricing,
 } from '@/services/supabase/seasons';
@@ -14,6 +16,7 @@ import './pass.css';
 interface SeasonView {
   season: SeasonRow;
   owned: boolean;
+  expiresLabel: string | null;
   purchasedAt: string | null;
 }
 
@@ -38,16 +41,20 @@ export default function MySeasonsScreen() {
       setSub(subscription);
       setSubActive(active);
       const bySeason = new Map(ents.map((e: SeasonEntitlement) => [e.season_id, e]));
-      setRows(
-        seasons.map((season) => {
+      const views = await Promise.all(
+        seasons.map(async (season) => {
           const e = bySeason.get(season.id);
+          const expiresAt = await fetchPassExpiresAt(season.id);
+          const owned = Boolean(expiresAt);
           return {
             season,
-            owned: active || Boolean(e),
+            owned,
+            expiresLabel: formatPassExpiry(expiresAt),
             purchasedAt: e?.purchased_at ?? null,
           };
         }),
       );
+      setRows(views);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar');
     } finally {
@@ -59,14 +66,17 @@ export default function MySeasonsScreen() {
     void load();
   }, [load]);
 
+  const subExpiry = formatPassExpiry(sub?.current_period_end);
+
   return (
     <main className="pass my-seasons">
       <button type="button" className="pass-back" onClick={() => navigate(-1)} aria-label="Volver">
         ←
       </button>
-      <h1 className="pass-title">Mi suscripción</h1>
+      <h1 className="pass-title">Mi pase</h1>
       <p className="pass-lead">
-        Suscripción mensual para niveles de pago. Cancela cuando quieras en Mercado Pago.
+        Pase ~30 días: GIF y video de temporadas liberadas por ★. Lo ya revelado se queda en tu
+        galería. Cancela en Mercado Pago cuando quieras.
       </p>
 
       {loading && <p className="pass-muted">Cargando…</p>}
@@ -76,16 +86,17 @@ export default function MySeasonsScreen() {
         <>
           <section className={`my-season-card${subActive ? ' owned' : ''}`}>
             <div>
-              <strong>{subActive ? 'Suscripción activa' : 'Sin suscripción activa'}</strong>
+              <strong>{subActive ? 'Pase activo' : 'Sin pase activo'}</strong>
               {sub && (
                 <span className="my-season-meta">
                   Estado: {sub.status}
                   {sub.amount_clp ? ` · ${formatClp(sub.amount_clp)}/mes` : ''}
+                  {subActive && subExpiry ? ` · hasta ${subExpiry}` : ''}
                 </span>
               )}
               {!subActive && (
                 <span className="my-season-meta">
-                  Suscríbete para desbloquear niveles 8–70 de la temporada.
+                  Suscríbete para jugar especiales (GIF/video). Las fotos siguen gratis.
                 </span>
               )}
             </div>
@@ -101,7 +112,7 @@ export default function MySeasonsScreen() {
             ) : (
               rows[0] && (
                 <Link className="btn-ghost my-season-buy" to={`/pase/${rows[0].season.id}`}>
-                  Suscribirme
+                  Activar pase
                 </Link>
               )
             )}
@@ -111,19 +122,19 @@ export default function MySeasonsScreen() {
             Temporadas
           </h2>
           <ul className="my-seasons-list">
-            {rows.map(({ season, owned, purchasedAt }) => {
+            {rows.map(({ season, owned, expiresLabel, purchasedAt }) => {
               const pricing = seasonPricing(season);
               return (
                 <li key={season.id} className={`my-season-card${owned ? ' owned' : ''}`}>
                   <div>
                     <strong>{season.name}</strong>
                     <span className="my-season-slug">{season.slug}</span>
-                    {owned && subActive && (
-                      <span className="my-season-meta">Incluida en tu suscripción</span>
+                    {owned && expiresLabel && (
+                      <span className="my-season-meta">Especiales hasta {expiresLabel}</span>
                     )}
-                    {owned && !subActive && purchasedAt && (
+                    {owned && !expiresLabel && purchasedAt && (
                       <span className="my-season-meta">
-                        Acceso legacy · {new Date(purchasedAt).toLocaleDateString('es-CL')}
+                        Otorgado · {new Date(purchasedAt).toLocaleDateString('es-CL')}
                       </span>
                     )}
                     {!owned && (
@@ -137,7 +148,7 @@ export default function MySeasonsScreen() {
                     <span className="my-season-badge">✓</span>
                   ) : (
                     <Link className="btn-ghost my-season-buy" to={`/pase/${season.id}`}>
-                      Suscribirme
+                      Activar pase
                     </Link>
                   )}
                 </li>

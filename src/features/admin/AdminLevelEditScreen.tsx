@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { LevelConfigJson, LevelMediaType, SeasonRow } from '@/types/database';
+import type { PowerUpConfig } from '@/types/level';
 import {
   createLevel,
   defaultLevelConfig,
@@ -16,6 +17,111 @@ import { formatBytes, prepareLevelImage } from '@/services/images/prepareLevelIm
 import { prepareLevelMedia } from '@/services/images/prepareLevelMedia';
 import './admin.css';
 
+/** ISO → valor para input datetime-local (hora local). */
+function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function localInputToIso(value: string): string | null {
+  const v = value.trim();
+  if (!v) return null;
+  const t = new Date(v).getTime();
+  if (!Number.isFinite(t)) return null;
+  return new Date(v).toISOString();
+}
+
+type PowerDef = {
+  type: PowerUpConfig['type'];
+  icon: string;
+  label: string;
+  hint: string;
+  make: () => PowerUpConfig;
+};
+
+const POWER_DEFS: PowerDef[] = [
+  {
+    type: 'bomb',
+    icon: '💣',
+    label: 'Bomba',
+    hint: 'Zona',
+    make: () => ({
+      type: 'bomb',
+      spawn: { delayMs: 8000, max: 2 },
+      params: { radiusCells: 10 },
+    }),
+  },
+  {
+    type: 'lightning',
+    icon: '⚡',
+    label: 'Rayo',
+    hint: 'Mata',
+    make: () => ({
+      type: 'lightning',
+      spawn: { delayMs: 12000, max: 1 },
+      params: { targets: 1 },
+    }),
+  },
+  {
+    type: 'shield',
+    icon: '🛡️',
+    label: 'Escudo',
+    hint: 'Protege',
+    make: () => ({
+      type: 'shield',
+      spawn: { delayMs: 10000, max: 2 },
+      params: { durationMs: 5000 },
+    }),
+  },
+  {
+    type: 'freeze',
+    icon: '❄️',
+    label: 'Hielo',
+    hint: 'Congela',
+    make: () => ({
+      type: 'freeze',
+      spawn: { delayMs: 11000, max: 2 },
+      params: { durationMs: 4000 },
+    }),
+  },
+  {
+    type: 'speed',
+    icon: '💨',
+    label: 'Turbo',
+    hint: 'Rápido',
+    make: () => ({
+      type: 'speed',
+      spawn: { delayMs: 9000, max: 2 },
+      params: { multiplier: 1.4, durationMs: 5000 },
+    }),
+  },
+  {
+    type: 'heart',
+    icon: '❤️',
+    label: 'Vida',
+    hint: '+1',
+    make: () => ({
+      type: 'heart',
+      spawn: { delayMs: 15000, max: 1 },
+      params: { lives: 1 },
+    }),
+  },
+  {
+    type: 'clock',
+    icon: '⏱️',
+    label: 'Reloj',
+    hint: '+15s',
+    make: () => ({
+      type: 'clock',
+      spawn: { delayMs: 14000, max: 2 },
+      params: { addSec: 15 },
+    }),
+  },
+];
+
 export default function AdminLevelEditScreen() {
   const { levelId } = useParams<{ levelId: string }>();
   const [search] = useSearchParams();
@@ -27,6 +133,7 @@ export default function AdminLevelEditScreen() {
   const [name, setName] = useState('');
   const [sortOrder, setSortOrder] = useState(1);
   const [isActive, setIsActive] = useState(true);
+  const [availableAtLocal, setAvailableAtLocal] = useState('');
   const [config, setConfig] = useState<LevelConfigJson>(defaultLevelConfig);
   const [fullFile, setFullFile] = useState<File | null>(null);
   const [thumbFile, setThumbFile] = useState<File | null>(null);
@@ -68,7 +175,7 @@ export default function AdminLevelEditScreen() {
         const max = all.reduce((m, l) => Math.max(m, l.sort_order), 0);
         setSortOrder(max + 1);
       } catch {
-        // ignore — deja 1 por defecto
+        /* ignore */
       }
     })();
   }, [isNew, seasonId]);
@@ -88,6 +195,7 @@ export default function AdminLevelEditScreen() {
         setName(row.name);
         setSortOrder(row.sort_order);
         setIsActive(row.is_active);
+        setAvailableAtLocal(isoToLocalInput(row.available_at));
         setSeasonId(row.season_id);
         setExistingImagePath(row.image_path);
         setExistingThumbPath(row.thumb_path);
@@ -110,6 +218,11 @@ export default function AdminLevelEditScreen() {
     setConfig((c) => ({ ...c, ...partial }));
   }
 
+  function togglePower(def: PowerDef, on: boolean) {
+    const rest = (config.powerUps ?? []).filter((p) => p.type !== def.type);
+    patchConfig({ powerUps: on ? [...rest, def.make()] : rest });
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -126,8 +239,30 @@ export default function AdminLevelEditScreen() {
       const defaultPaths = pathsForSortOrder(sortOrder);
       const compressNotes: string[] = [];
 
+      // Foto fija siempre obligatoria: es el fondo que se revela en partida.
+      if (!fullFile && !existingImagePath) {
+        throw new Error(
+          mediaType === 'image'
+            ? 'Sube la imagen del nivel'
+            : 'Sube la foto de perfil (fondo que se revela en partida)',
+        );
+      }
+
+      let mediaPath = existingMediaPath;
+      if (mediaType === 'image') {
+        mediaPath = null;
+      } else if (mediaFile) {
+        setInfo('Validando media…');
+        const prepared = await prepareLevelMedia(mediaFile, mediaType);
+        mediaPath = `level-${sortOrder}/media.${prepared.ext}`;
+        setInfo('Subiendo media…');
+        await uploadLevelMedia(mediaPath, prepared.file, prepared.contentType);
+      } else if (!mediaPath) {
+        throw new Error(mediaType === 'gif' ? 'Sube el GIF del nivel' : 'Sube el video del nivel');
+      }
+
       async function uploadPrepared(kind: 'full' | 'thumb', file: File, basePath: string) {
-        setInfo(`Comprimiendo ${kind === 'full' ? 'imagen' : 'thumbnail'}…`);
+        setInfo(`Comprimiendo ${kind === 'full' ? 'imagen' : 'miniatura'}…`);
         const prepared = await prepareLevelImage(file, kind);
         const finalPath = basePath.replace(/\.(png|webp|jpe?g)$/i, `.${prepared.ext}`);
         await uploadLevelImage(finalPath, prepared.blob, prepared.contentType);
@@ -149,19 +284,6 @@ export default function AdminLevelEditScreen() {
         thumbPath = await uploadPrepared('thumb', fullFile, defaultPaths.thumb_path);
       }
 
-      let mediaPath = existingMediaPath;
-      if (mediaType === 'image') {
-        mediaPath = null;
-      } else if (mediaFile) {
-        setInfo('Validando media…');
-        const prepared = await prepareLevelMedia(mediaFile, mediaType);
-        mediaPath = `level-${sortOrder}/media.${prepared.ext}`;
-        setInfo('Subiendo media…');
-        await uploadLevelMedia(mediaPath, prepared.file, prepared.contentType);
-      } else if (!mediaPath) {
-        throw new Error(mediaType === 'gif' ? 'Sube el GIF del nivel' : 'Sube el video del nivel');
-      }
-
       const payload = {
         season_id: seasonId,
         name: name.trim(),
@@ -173,6 +295,7 @@ export default function AdminLevelEditScreen() {
         media_type: mediaType,
         media_path: mediaPath,
         source_url: sourceUrl.trim() || null,
+        available_at: localInputToIso(availableAtLocal),
       };
 
       setInfo('Guardando nivel…');
@@ -201,15 +324,9 @@ export default function AdminLevelEditScreen() {
 
   const enemyCount = config.enemies?.length ?? 0;
   const enemySpeed = config.enemies?.[0]?.speed ?? 200;
-  const hasBomb = config.powerUps?.some((p) => p.type === 'bomb') ?? false;
-  const hasLightning = config.powerUps?.some((p) => p.type === 'lightning') ?? false;
-  const hasShield = config.powerUps?.some((p) => p.type === 'shield') ?? false;
-  const hasFreeze = config.powerUps?.some((p) => p.type === 'freeze') ?? false;
-  const hasSpeed = config.powerUps?.some((p) => p.type === 'speed') ?? false;
-  const hasHeart = config.powerUps?.some((p) => p.type === 'heart') ?? false;
 
   return (
-    <main className="admin">
+    <main className="admin admin-level-form">
       <header className="admin-header">
         <Link className="admin-back" to="/admin/niveles">
           ←
@@ -219,54 +336,75 @@ export default function AdminLevelEditScreen() {
       </header>
 
       <form className="admin-form" onSubmit={(ev) => void onSubmit(ev)}>
-        <label className="admin-field">
-          <span>Temporada</span>
-          <select
-            value={seasonId}
-            onChange={(e) => setSeasonId(e.target.value)}
-            required
-            disabled={!isNew}
-          >
-            <option value="">—</option>
-            {seasons.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="admin-field">
-          <span>Nombre</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} required maxLength={80} />
-        </label>
-
-        <div className="admin-row-fields">
-          <label className="admin-field">
-            <span>Orden</span>
-            <input
-              type="number"
-              min={1}
-              value={sortOrder}
-              onChange={(e) => setSortOrder(Number(e.target.value))}
-              required
-            />
-          </label>
-          <label className="admin-check">
-            <input
-              type="checkbox"
-              checked={isActive}
-              onChange={(e) => setIsActive(e.target.checked)}
-            />
-            Activo
-          </label>
-        </div>
-
+        {/* —— Datos básicos —— */}
         <fieldset className="admin-fieldset">
-          <legend>Gameplay</legend>
+          <legend>Datos básicos</legend>
+
+          <label className="admin-field">
+            <span>Temporada</span>
+            <select
+              value={seasonId}
+              onChange={(e) => setSeasonId(e.target.value)}
+              required
+              disabled={!isNew}
+            >
+              <option value="">Elige temporada</option>
+              {seasons.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="admin-field">
+            <span>Nombre</span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              maxLength={80}
+              placeholder="Ej. Mirador cachero"
+            />
+          </label>
+
           <div className="admin-row-fields">
             <label className="admin-field">
-              <span>Objetivo %</span>
+              <span>Nº de orden</span>
+              <input
+                type="number"
+                min={1}
+                value={sortOrder}
+                onChange={(e) => setSortOrder(Number(e.target.value))}
+                required
+              />
+            </label>
+            <label className="admin-check admin-check--card">
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+              />
+              Visible para jugadores
+            </label>
+          </div>
+
+          <label className="admin-field">
+            <span>Disponible desde (goteo · vacío = ya)</span>
+            <input
+              type="datetime-local"
+              value={availableAtLocal}
+              onChange={(e) => setAvailableAtLocal(e.target.value)}
+            />
+          </label>
+        </fieldset>
+
+        {/* —— Dificultad —— */}
+        <fieldset className="admin-fieldset">
+          <legend>Dificultad</legend>
+          <div className="admin-row-fields">
+            <label className="admin-field">
+              <span>Meta de conquista %</span>
               <input
                 type="number"
                 min={1}
@@ -288,7 +426,18 @@ export default function AdminLevelEditScreen() {
           </div>
           <div className="admin-row-fields">
             <label className="admin-field">
-              <span>Vel. jugador</span>
+              <span>Cronómetro (segundos)</span>
+              <input
+                type="number"
+                min={0}
+                max={600}
+                step={5}
+                value={config.timeLimitSec ?? 120}
+                onChange={(e) => patchConfig({ timeLimitSec: Number(e.target.value) })}
+              />
+            </label>
+            <label className="admin-field">
+              <span>Velocidad del jugador</span>
               <input
                 type="number"
                 min={50}
@@ -297,19 +446,14 @@ export default function AdminLevelEditScreen() {
                 onChange={(e) => patchConfig({ playerSpeed: Number(e.target.value) })}
               />
             </label>
-            <label className="admin-field">
-              <span>minTimeMs</span>
-              <input
-                type="number"
-                min={0}
-                step={500}
-                value={config.minTimeMs ?? 8000}
-                onChange={(e) => patchConfig({ minTimeMs: Number(e.target.value) })}
-              />
-            </label>
           </div>
+          <p className="admin-hint">
+            Cronómetro: <strong>120</strong> es el default. Pon <strong>0</strong> para jugar sin
+            límite de tiempo.
+          </p>
         </fieldset>
 
+        {/* —— Enemigos —— */}
         <fieldset className="admin-fieldset">
           <legend>Enemigos</legend>
           <div className="admin-row-fields">
@@ -348,201 +492,116 @@ export default function AdminLevelEditScreen() {
           </div>
         </fieldset>
 
+        {/* —— Power-ups —— */}
         <fieldset className="admin-fieldset">
           <legend>Power-ups</legend>
-          <label className="admin-check">
-            <input
-              type="checkbox"
-              checked={hasBomb}
-              onChange={(e) => {
-                const rest = (config.powerUps ?? []).filter((p) => p.type !== 'bomb');
-                patchConfig({
-                  powerUps: e.target.checked
-                    ? [
-                        ...rest,
-                        {
-                          type: 'bomb',
-                          spawn: { delayMs: 8000, max: 2 },
-                          params: { radiusCells: 10 },
-                        },
-                      ]
-                    : rest,
-                });
-              }}
-            />
-            Bomba
-          </label>
-          <label className="admin-check">
-            <input
-              type="checkbox"
-              checked={hasLightning}
-              onChange={(e) => {
-                const rest = (config.powerUps ?? []).filter((p) => p.type !== 'lightning');
-                patchConfig({
-                  powerUps: e.target.checked
-                    ? [
-                        ...rest,
-                        {
-                          type: 'lightning',
-                          spawn: { delayMs: 12000, max: 1 },
-                          params: { targets: 1 },
-                        },
-                      ]
-                    : rest,
-                });
-              }}
-            />
-            Rayo
-          </label>
-          <label className="admin-check">
-            <input
-              type="checkbox"
-              checked={hasShield}
-              onChange={(e) => {
-                const rest = (config.powerUps ?? []).filter((p) => p.type !== 'shield');
-                patchConfig({
-                  powerUps: e.target.checked
-                    ? [
-                        ...rest,
-                        {
-                          type: 'shield',
-                          spawn: { delayMs: 10000, max: 2 },
-                          params: { durationMs: 5000 },
-                        },
-                      ]
-                    : rest,
-                });
-              }}
-            />
-            Escudo
-          </label>
-          <label className="admin-check">
-            <input
-              type="checkbox"
-              checked={hasFreeze}
-              onChange={(e) => {
-                const rest = (config.powerUps ?? []).filter((p) => p.type !== 'freeze');
-                patchConfig({
-                  powerUps: e.target.checked
-                    ? [
-                        ...rest,
-                        {
-                          type: 'freeze',
-                          spawn: { delayMs: 11000, max: 2 },
-                          params: { durationMs: 4000 },
-                        },
-                      ]
-                    : rest,
-                });
-              }}
-            />
-            Congelación
-          </label>
-          <label className="admin-check">
-            <input
-              type="checkbox"
-              checked={hasSpeed}
-              onChange={(e) => {
-                const rest = (config.powerUps ?? []).filter((p) => p.type !== 'speed');
-                patchConfig({
-                  powerUps: e.target.checked
-                    ? [
-                        ...rest,
-                        {
-                          type: 'speed',
-                          spawn: { delayMs: 9000, max: 2 },
-                          params: { multiplier: 1.4, durationMs: 5000 },
-                        },
-                      ]
-                    : rest,
-                });
-              }}
-            />
-            Velocidad
-          </label>
-          <label className="admin-check">
-            <input
-              type="checkbox"
-              checked={hasHeart}
-              onChange={(e) => {
-                const rest = (config.powerUps ?? []).filter((p) => p.type !== 'heart');
-                patchConfig({
-                  powerUps: e.target.checked
-                    ? [
-                        ...rest,
-                        {
-                          type: 'heart',
-                          spawn: { delayMs: 15000, max: 1 },
-                          params: { lives: 1 },
-                        },
-                      ]
-                    : rest,
-                });
-              }}
-            />
-            Corazón (+1 vida)
-          </label>
+          <p className="admin-hint">Toca para activar o desactivar en este nivel.</p>
+          <div className="admin-power-grid">
+            {POWER_DEFS.map((def) => {
+              const on = (config.powerUps ?? []).some((p) => p.type === def.type);
+              return (
+                <button
+                  key={def.type}
+                  type="button"
+                  className={`admin-power-chip${on ? ' is-on' : ''}`}
+                  aria-pressed={on}
+                  onClick={() => togglePower(def, !on)}
+                >
+                  <span aria-hidden>{def.icon}</span>
+                  <strong>{def.label}</strong>
+                  <small>{def.hint}</small>
+                </button>
+              );
+            })}
+          </div>
         </fieldset>
 
+        {/* —— Contenido del nivel —— */}
         <fieldset className="admin-fieldset">
-          <legend>Imágenes (Storage)</legend>
+          <legend>Contenido del nivel</legend>
           <p className="admin-hint">
-            Sube PNG/JPEG/WebP de hasta 15 MB. Se convierte a WebP y se comprime bajo 400 KB
-            automáticamente (full ≤1280px, thumb ≤480px). Paths: level-{sortOrder}/full.webp
+            Elige qué desbloquea el jugador al completar. En partida siempre se revela una{' '}
+            <strong>foto fija</strong>; el GIF/video solo se ve después, en el resultado y la
+            galería.
           </p>
-          <label className="admin-field">
-            <span>Imagen completa</span>
-            <input
-              type="file"
-              accept="image/png,image/webp,image/jpeg"
-              onChange={(e) => setFullFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          <label className="admin-field">
-            <span>Thumbnail (opcional)</span>
-            <input
-              type="file"
-              accept="image/png,image/webp,image/jpeg"
-              onChange={(e) => setThumbFile(e.target.files?.[0] ?? null)}
-            />
-          </label>
-        </fieldset>
 
-        <fieldset className="admin-fieldset">
-          <legend>Contenido oculto</legend>
-          <label className="admin-field">
-            <span>Tipo</span>
-            <select
-              value={mediaType}
-              onChange={(e) => setMediaType(e.target.value as LevelMediaType)}
-            >
-              <option value="image">Foto</option>
-              <option value="gif">GIF</option>
-              <option value="video">Video (≤20 s)</option>
-            </select>
-          </label>
+          <div className="admin-media-type" role="group" aria-label="Tipo de contenido">
+            {(
+              [
+                { id: 'image', label: 'Imagen', hint: 'Solo foto' },
+                { id: 'gif', label: 'GIF', hint: 'Con movimiento' },
+                { id: 'video', label: 'Video', hint: 'Máx. 20 s' },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`admin-media-chip${mediaType === opt.id ? ' is-on' : ''}`}
+                aria-pressed={mediaType === opt.id}
+                onClick={() => {
+                  setMediaType(opt.id);
+                  if (opt.id === 'image') setMediaFile(null);
+                }}
+              >
+                <strong>{opt.label}</strong>
+                <small>{opt.hint}</small>
+              </button>
+            ))}
+          </div>
+
           {mediaType !== 'image' && (
             <>
-              <p className="admin-hint">
-                {mediaType === 'gif'
-                  ? 'GIF de hasta 12 MB.'
-                  : 'MP4/WebM de máximo 20 segundos y 12 MB.'}{' '}
-                La imagen completa de arriba sigue siendo obligatoria: es el poster que se revela
-                durante la partida. Path: level-{sortOrder}/media.*
-              </p>
               <label className="admin-field">
-                <span>{mediaType === 'gif' ? 'Archivo GIF' : 'Archivo de video'}</span>
+                <span>
+                  {mediaType === 'gif' ? '1. Archivo GIF (premio)' : '1. Archivo de video (premio)'}
+                </span>
                 <input
                   type="file"
                   accept={mediaType === 'gif' ? 'image/gif' : 'video/mp4,video/webm'}
                   onChange={(e) => setMediaFile(e.target.files?.[0] ?? null)}
                 />
               </label>
+              <p className="admin-hint">
+                {mediaType === 'gif' ? 'GIF hasta 12 MB.' : 'MP4/WebM ≤ 20 s y 12 MB.'} Se
+                reproduce al completar el nivel y en la galería.
+              </p>
+              {mediaFile && <p className="admin-ok">{mediaFile.name}</p>}
               {existingMediaPath && !mediaFile && (
-                <p className="admin-hint">Media actual: {existingMediaPath}</p>
+                <p className="admin-hint">Actual: {existingMediaPath}</p>
               )}
             </>
           )}
+
+          <label className="admin-field">
+            <span>
+              {mediaType === 'image'
+                ? 'Imagen del nivel (fondo en partida)'
+                : '2. Foto de perfil (fondo en partida)'}
+            </span>
+            <input
+              type="file"
+              accept="image/png,image/webp,image/jpeg"
+              onChange={(e) => setFullFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <p className="admin-hint">
+            {mediaType === 'image'
+              ? 'PNG/JPEG/WebP hasta 15 MB (se comprime sola). Es lo que se revela al conquistar.'
+              : 'Frame o portada del GIF/video. Obligatoria: es lo único que se ve mientras se juega (sin movimiento). PNG/JPEG/WebP hasta 15 MB.'}
+            {existingImagePath ? ` · Actual: ${existingImagePath}` : ''}
+          </p>
+          {fullFile && <p className="admin-ok">{fullFile.name}</p>}
+
+          <label className="admin-field">
+            <span>Miniatura para listados (opcional)</span>
+            <input
+              type="file"
+              accept="image/png,image/webp,image/jpeg"
+              onChange={(e) => setThumbFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          {thumbFile && <p className="admin-ok">{thumbFile.name}</p>}
+
           <label className="admin-field">
             <span>Link de origen (opcional)</span>
             <input
@@ -553,16 +612,32 @@ export default function AdminLevelEditScreen() {
               onChange={(e) => setSourceUrl(e.target.value)}
             />
           </label>
-          <p className="admin-hint">
-            De dónde viene el contenido. El jugador podrá visitarlo tras revelarlo.
-          </p>
         </fieldset>
+
+        {/* —— Avanzado —— */}
+        <details className="admin-advanced">
+          <summary>Avanzado · anti-trampas</summary>
+          <label className="admin-field">
+            <span>Tiempo mínimo para validar victoria (ms)</span>
+            <input
+              type="number"
+              min={0}
+              step={500}
+              value={config.minTimeMs ?? 8000}
+              onChange={(e) => patchConfig({ minTimeMs: Number(e.target.value) })}
+            />
+          </label>
+          <p className="admin-hint">
+            El servidor ignora un “gané” más rápido que esto (evita cheats). Habitual:{' '}
+            <strong>8000 = 8 segundos</strong>. No es el cronómetro de la partida.
+          </p>
+        </details>
 
         {error && <p className="admin-error">{error}</p>}
         {info && <p className="admin-ok">{info}</p>}
 
         <button className="admin-save" type="submit" disabled={saving}>
-          {saving ? 'Guardando…' : 'Guardar'}
+          {saving ? 'Guardando…' : isNew ? 'Crear nivel' : 'Guardar cambios'}
         </button>
       </form>
     </main>

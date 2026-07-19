@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchGallery } from '@/services/supabase/levels';
 import RevealedMedia from '@/components/RevealedMedia';
 import FriendSites from '@/components/FriendSites';
@@ -36,6 +36,7 @@ function LockIcon({ size = 22 }: { size?: number }) {
 
 export default function GalleryScreen() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +59,18 @@ export default function GalleryScreen() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Deep-link: /gallery?level=<id> abre el revelado (p.ej. desde niveles)
+  useEffect(() => {
+    const levelId = searchParams.get('level');
+    if (!levelId || loading || items.length === 0) return;
+    const hit = items.find((i) => i.level.id === levelId);
+    if (hit?.revealed) {
+      setTab('revealed');
+      setViewer(hit);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams, loading, items]);
 
   const revealed = useMemo(() => items.filter((i) => i.revealed), [items]);
   const locked = useMemo(() => items.filter((i) => !i.revealed), [items]);
@@ -90,7 +103,9 @@ export default function GalleryScreen() {
         </button>
         <div className="gallery-heading">
           <h1 className="gallery-title">Galería</h1>
-          <p className="gallery-sub">Completa niveles para revelar imágenes</p>
+          <p className="gallery-sub">
+            Lo revelado es tuyo (con movimiento). El pase sirve para desbloquear especiales nuevos.
+          </p>
         </div>
       </header>
 
@@ -262,6 +277,12 @@ export default function GalleryScreen() {
               </div>
               {!viewer.revealed && (
                 <p className="gallery-sheet-hint">Completa el nivel para revelarlo.</p>
+              )}
+              {viewer.revealed && viewer.level.media_type !== 'image' && (
+                <p className="gallery-sheet-hint">
+                  Colección tuya · se ve con movimiento aunque el pase expire. Renueva el pase para
+                  revelar especiales nuevos.
+                </p>
               )}
               {viewer.revealed && viewer.level.source_url && (
                 <a

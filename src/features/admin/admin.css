@@ -1,31 +1,50 @@
+/* Contenedor admin: UN solo scroll. Sin flex anidado que aplasta hijos. */
 .admin {
+  box-sizing: border-box;
   flex: 1;
-  display: flex;
-  flex-direction: column;
   min-height: 0;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 12px 16px 28px;
+  overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 12px 20px calc(28px + env(safe-area-inset-bottom));
-  max-width: 520px;
-  width: 100%;
-  margin: 0 auto;
+  overscroll-behavior: contain;
   background: var(--bg-void);
 }
 
+.admin *,
+.admin *::before,
+.admin *::after {
+  box-sizing: border-box;
+}
+
 .admin-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
   gap: 8px;
+  margin: -12px -16px 16px;
+  padding: 12px 16px;
+  background: rgba(8, 11, 22, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
 }
 
 .admin-header h1 {
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: clamp(1.05rem, 4.2vw, 1.25rem);
   letter-spacing: -0.02em;
   text-align: center;
   flex: 1;
+  min-width: 0;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .admin-back,
@@ -60,7 +79,6 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  overflow-y: auto;
 }
 
 .admin-row {
@@ -71,6 +89,7 @@
 
 .admin-row-main {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -94,6 +113,7 @@
   font-weight: 700;
   background: rgba(139, 92, 246, 0.2);
   color: var(--accent);
+  flex-shrink: 0;
 }
 
 .admin-row-meta {
@@ -106,10 +126,14 @@
 .admin-row-meta span {
   font-size: 0.8rem;
   color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-row-del {
   width: 48px;
+  flex-shrink: 0;
   border: 1px solid rgba(248, 113, 113, 0.35);
   border-radius: 12px;
   background: transparent;
@@ -121,8 +145,10 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  overflow-y: auto;
-  padding-bottom: 24px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding-bottom: 12px;
 }
 
 .admin-field {
@@ -130,6 +156,8 @@
   flex-direction: column;
   gap: 6px;
   text-align: left;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .admin-field span {
@@ -140,14 +168,16 @@
 
 .admin-field input[type='text'],
 .admin-field input[type='number'],
+.admin-field input[type='url'],
 .admin-field input:not([type]) {
-  min-height: var(--touch);
+  width: 100%;
+  min-height: 48px;
   padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--bg-panel);
   color: var(--text);
-  font-size: 1rem;
+  font-size: 16px; /* evita zoom iOS */
   outline: none;
   user-select: text;
   -webkit-user-select: text;
@@ -162,7 +192,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  align-items: end;
+  align-items: stretch;
+  width: 100%;
 }
 
 .admin-check {
@@ -187,6 +218,10 @@
   flex-direction: column;
   gap: 12px;
   background: var(--bg-card);
+  /* fieldset default min-width:min-content rompe el layout en móvil */
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
 }
 
 .admin-fieldset legend {
@@ -270,13 +305,13 @@
 
 .admin-field select {
   width: 100%;
-  min-height: 44px;
+  min-height: 48px;
   padding: 0 12px;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: var(--bg-elevated);
   color: var(--text);
-  font: inherit;
+  font-size: 16px;
 }
 
 .admin-form-actions {
@@ -445,4 +480,183 @@
 
 .admin-sub-status--cancelled {
   color: var(--danger);
+}
+
+/* —— Editor de nivel —— */
+.admin-level-form {
+  /* espacio bajo el CTA; el shell ya reserva la bottom nav */
+  padding-bottom: 32px;
+}
+
+.admin-level-form .admin-form {
+  overflow: visible;
+}
+
+.admin-level-form .admin-fieldset,
+.admin-level-form .admin-advanced,
+.admin-level-form .admin-save {
+  width: 100%;
+}
+
+.admin-level-form .admin-save {
+  display: block;
+  min-height: 56px;
+  margin-top: 4px;
+}
+
+.admin-check--card {
+  min-height: 48px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  width: 100%;
+}
+
+.admin-power-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.admin-power-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 76px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid #2a3150;
+  background: #12162a;
+  color: #8b93b5;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-power-chip span:first-child {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.admin-power-chip strong {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.admin-power-chip small {
+  font-size: 0.72rem;
+  color: #6b7394;
+}
+
+.admin-power-chip.is-on {
+  color: #eef0ff;
+  border-color: rgba(167, 139, 250, 0.55);
+  background: rgba(139, 92, 246, 0.16);
+}
+
+.admin-power-chip.is-on small {
+  color: #b7a6f0;
+}
+
+.admin-advanced {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid #2a3150;
+  background: #12162a;
+  padding: 0 14px 12px;
+}
+
+.admin-advanced summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #8b93b5;
+}
+
+.admin-advanced summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-advanced[open] summary {
+  color: #c5cae0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #2a3150;
+}
+
+.admin-level-form .admin-field input[type='file'] {
+  width: 100%;
+  max-width: 100%;
+  font-size: 0.85rem;
+}
+
+.admin-save {
+  width: 100%;
+}
+
+.admin-media-type {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.admin-media-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 64px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid #2a3150;
+  background: #12162a;
+  color: #8b93b5;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-media-chip strong {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.admin-media-chip small {
+  font-size: 0.72rem;
+  color: #6b7394;
+}
+
+.admin-media-chip.is-on {
+  color: #eef0ff;
+  border-color: rgba(167, 139, 250, 0.55);
+  background: rgba(139, 92, 246, 0.16);
+}
+
+.admin-media-chip.is-on small {
+  color: #b7a6f0;
+}
+
+/* Móvil: una columna para no aplastar labels/inputs */
+@media (max-width: 480px) {
+  .admin-row-fields,
+  .admin-power-grid,
+  .admin-stat-grid,
+  .admin-quick-links {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-media-type {
+    grid-template-columns: 1fr;
+  }
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  adminGrantEnergyPack,
   adminGrantSeasonPass,
   createSeason,
   fetchSeasonsAdmin,
@@ -31,6 +32,7 @@ function emptyForm(): SeasonWriteInput {
     offer_starts_at: start,
     offer_ends_at: `${y}-${m}-15T00:00:00.000Z`,
     is_active: true,
+    stars_required_to_unlock_next: 20,
   };
 }
 
@@ -88,6 +90,7 @@ export default function AdminSeasonsScreen() {
       offer_starts_at: s.offer_starts_at,
       offer_ends_at: s.offer_ends_at,
       is_active: s.is_active,
+      stars_required_to_unlock_next: s.stars_required_to_unlock_next ?? 20,
     });
   }
 
@@ -126,6 +129,17 @@ export default function AdminSeasonsScreen() {
       setGrantMsg('Pase otorgado a tu cuenta');
     } catch (e) {
       setGrantMsg(e instanceof Error ? e.message : 'No se pudo otorgar');
+    }
+  }
+
+  async function grantSelfEnergy() {
+    if (!user) return;
+    setGrantMsg(null);
+    try {
+      await adminGrantEnergyPack(user.id);
+      setGrantMsg('Pack de corazones otorgado (lleno al máximo)');
+    } catch (e) {
+      setGrantMsg(e instanceof Error ? e.message : 'No se pudo otorgar pack');
     }
   }
 
@@ -243,6 +257,26 @@ export default function AdminSeasonsScreen() {
           />
           Activa
         </label>
+        <label className="admin-field">
+          <span>★ para liberar la siguiente temporada</span>
+          <input
+            type="number"
+            min={0}
+            max={60}
+            value={form.stars_required_to_unlock_next}
+            onChange={(e) =>
+              setForm((f) => ({
+                ...f,
+                stars_required_to_unlock_next: Number(e.target.value),
+              }))
+            }
+            required
+          />
+        </label>
+        <p className="admin-hint">
+          Debe ser alcanzable solo con niveles imagen (máx. 3★ × cantidad de fotos). Si pones de
+          más, el servidor lo baja al techo free automáticamente.
+        </p>
         <button type="submit" className="btn-cta" disabled={saving}>
           {saving ? 'Guardando…' : editingId ? 'Actualizar' : 'Crear'}
         </button>
@@ -259,7 +293,7 @@ export default function AdminSeasonsScreen() {
                   <strong>{s.name}</strong>
                   <span>
                     {s.is_active ? 'Activa' : 'Inactiva'} · {formatClp(p.effectiveClp)}
-                    {p.onOffer ? ' oferta' : ''}
+                    {p.onOffer ? ' oferta' : ''} · gate {s.stars_required_to_unlock_next ?? 0}★
                   </span>
                 </span>
               </button>
@@ -282,7 +316,11 @@ export default function AdminSeasonsScreen() {
           </select>
         </label>
         <button type="button" className="btn-ghost" onClick={() => void grantSelf()}>
-          Darme pase de esa temporada
+          Darme pase de esa temporada (+30 días)
+        </button>
+        <h2 className="admin-form-title">Otorgar pack corazones (test)</h2>
+        <button type="button" className="btn-ghost" onClick={() => void grantSelfEnergy()}>
+          Rellenar mis corazones al máximo
         </button>
         {grantMsg && <p className="admin-msg">{grantMsg}</p>}
       </section>

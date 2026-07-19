@@ -12,8 +12,13 @@ export interface GameEventMap {
   /** Phaser → React */
   'game:progress': { conqueredPct: number };
   'game:life-lost': { livesLeft: number };
+  /** Cronómetro del nivel (solo si hay timeLimitSec > 0). */
+  'game:time': { remainingMs: number; limited: boolean };
+  /** Phaser → React: partida terminada; el revelado lo dispara React con game:reveal */
   'game:completed': LevelResultStats;
   'game:failed': LevelResultStats;
+  /** React → Phaser: celebrar / revelar imagen tras victoria */
+  'game:reveal': Record<string, never>;
 }
 
 type Handler<T> = (payload: T) => void;

@@ -145,6 +145,14 @@ export default function App() {
                 </RequireAdmin>
               }
             />
+            <Route
+              path="/admin/levels/:levelId"
+              element={
+                <RequireAdmin>
+                  <AdminLevelEditScreen />
+                </RequireAdmin>
+              }
+            />
           </Route>
 
           <Route
@@ -168,14 +176,6 @@ export default function App() {
             }
           />
 
-          <Route
-            path="/admin/levels/:levelId"
-            element={
-              <RequireAdmin>
-                <AdminLevelEditScreen />
-              </RequireAdmin>
-            }
-          />
           <Route
             path="/play/:levelId"
             element={

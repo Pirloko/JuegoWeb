@@ -95,13 +95,22 @@ Anti-cheat más fuerte (replay de inputs en Edge Function) queda fuera de v1.
 
 Migración `00009_seasons_and_entitlements.sql` + `00011_subscriptions.sql`:
 
-- `seasons` — precios CLP, oferta opcional, fechas.
+- `seasons` — precios CLP, oferta opcional, fechas,
+  `stars_required_to_unlock_next` (00025: ★ para liberar la siguiente;
+  helpers `season_star_cap_free`, `season_countable_stars`,
+  `can_access_season`; clamp anti soft-lock).
 - `levels.season_id` — unique `(season_id, sort_order)`.
-- `season_entitlements` — acceso legacy / admin (permanente).
-- `subscriptions` — suscripción mensual MP (`authorized` = acceso 8–70).
-- Helpers: `has_season_pass` (sub **o** entitlement), `has_active_subscription`,
-  `upsert_subscription_from_mp`, `grant_season_pass`.
-- `complete_level` scoped a la temporada + gate free (1–7) / pago (8+).
+- `season_entitlements` — pase por temporada con `expires_at` (~30 días;
+  admin/one-shot). Migración 00028.
+- `subscriptions` — suscripción MP; vigente si `authorized` y
+  `current_period_end > now()` (default +30d al autorizar sin fecha).
+- Helpers: `subscription_is_current`, `has_season_pass`, `has_active_subscription`,
+  `pass_expires_at`, `upsert_subscription_from_mp`, `grant_season_pass`.
+- `complete_level` scoped a temporada; gate de pago = **GIF/video**
+  (`level_is_special`, migración 00026). Niveles imagen free; especiales
+  sin pase se saltan en la ruta. Helpers: `previous_required_levels_completed`,
+  `unlock_next_playable_levels`. Gate ★ entre temporadas: `can_access_season`.
+  *(Legacy `free_level_max()` solo para medalla free_block.)*
 
 ## Gamificación (migraciones 00015–00017)
 
@@ -129,9 +138,32 @@ Ver plan y decisiones en `docs/GAMIFICACION_PLAN.md`.
   gate "el lector completó el nivel"; no abre la RLS select-own de
   `profiles`). Rate limit por trigger: máx 10 reseñas nuevas/hora.
 
+## Energía (00029–00030)
+
+- `user_energy` — `hearts` (0–5), `last_refill_at`. Refill +1 cada 20 min.
+- `get_user_energy()` — aplica refill y devuelve snapshot.
+- `begin_level_attempt(level_id)` — exige ≥1 corazón (salvo pase), crea
+  `game_sessions`. **No gasta** corazón al empezar.
+- `end_game_session(..., failed)` — resta 1 corazón al fallar (salvo pase).
+- `energy_pack_purchases` (00030) — auditoría de packs one-shot ($990 CLP).
+- `grant_energy_pack` — rellena al máximo (admin o webhook MP).
+- Edge `create-energy-checkout` → preference MP; `external_reference`
+  `energy|userId|amount`.
+- Gasto al fallar: migración `00032_energy_on_fail.sql`.
+
+## Goteo / ritmo (00031)
+
+- `levels.available_at` — timestamptz nullable; null = jugable ya.
+- `level_is_released(available_at)` — helper SQL.
+- `begin_level_attempt` / `complete_level` rechazan si aún no salió.
+- Cliente: status `upcoming`, teaser T+1 (`SEASON_TEASER_DAYS` = 7).
+
 ## Storage
 
-- Bucket `level-images`: imagen completa + thumbnail por nivel.
+- Bucket `level-images`: imagen completa + thumbnail por nivel +
+  `media.*` (GIF/video). `can_read_level_image` (00027): thumbs para
+  autenticados; poster si unlocked/completed; **media solo si completed**
+  (la colección sigue visible sin pase activo).
 - Imágenes de niveles bloqueados: bucket privado + signed URLs emitidas solo
   si el nivel está desbloqueado para el usuario (política por RPC/policy).
 - Thumbnails públicos con blur/candado para la galería.

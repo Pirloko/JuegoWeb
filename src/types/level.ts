@@ -65,18 +65,36 @@ export interface HeartConfig {
   };
 }
 
+export interface ClockConfig {
+  type: 'clock';
+  spawn: PowerUpSpawnConfig;
+  params: {
+    /** Segundos que suma al cronómetro del nivel. */
+    addSec: number;
+  };
+}
+
 export type PowerUpConfig =
   | BombConfig
   | LightningConfig
   | ShieldConfig
   | FreezeConfig
   | SpeedConfig
-  | HeartConfig;
+  | HeartConfig
+  | ClockConfig;
+
+/** Límite de tiempo por defecto (segundos) si el nivel no define otro. */
+export const DEFAULT_TIME_LIMIT_SEC = 120;
 
 export interface LevelConfig {
   targetPct: number;
   lives: number;
   playerSpeed: number;
+  /**
+   * Límite de partida en segundos. `0` = sin límite.
+   * Si falta en JSON, toLevelConfig aplica DEFAULT_TIME_LIMIT_SEC.
+   */
+  timeLimitSec: number;
   enemies: EnemyConfig[];
   powerUps: PowerUpConfig[];
   /** Imagen oculta que se revela al conquistar (URL o path servido). */

@@ -35,10 +35,122 @@
   color: var(--accent-2);
 }
 
-.hud-lives {
-  color: var(--accent-hot);
-  letter-spacing: 3px;
+.hud-time {
+  font-family: var(--font-display);
+  font-weight: 800;
   font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  color: #7dd3fc;
+  min-width: 3.2em;
+  text-align: center;
+}
+
+.hud-time.is-urgent {
+  color: #f87171;
+  animation: hud-pulse 0.7s ease-in-out infinite;
+}
+
+@keyframes hud-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.hud-energy {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #f87171;
+  min-width: 2.5rem;
+  text-align: center;
+}
+
+.hud-lives {
+  color: #c5cae0;
+  letter-spacing: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
+/* Pantalla sin corazones */
+.energy-gate {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  min-height: 0;
+}
+
+.energy-gate-card {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  padding: 28px 22px 22px;
+  border-radius: 20px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: linear-gradient(
+    160deg,
+    rgba(248, 113, 113, 0.14),
+    rgba(12, 15, 28, 0.96) 45%,
+    rgba(34, 211, 238, 0.08)
+  );
+  text-align: center;
+}
+
+.energy-gate-icon {
+  font-size: 1.6rem;
+  letter-spacing: 4px;
+  color: #6b7394;
+  line-height: 1;
+}
+
+.energy-gate-card h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.energy-gate-card p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: #c5cae0;
+}
+
+.energy-gate-card p strong {
+  color: #fff;
+}
+
+.energy-gate-aside {
+  font-size: 0.88rem !important;
+  color: #8b93b5 !important;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.energy-gate-card .btn-cta {
+  margin-top: 8px;
+  width: 100%;
+  min-height: 52px;
+}
+
+.energy-gate-card .btn-ghost {
+  width: 100%;
+  min-height: 48px;
 }
 
 .game-level-name {

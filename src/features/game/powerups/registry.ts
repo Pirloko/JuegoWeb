@@ -6,6 +6,7 @@ import { ShieldEffect } from './ShieldEffect';
 import { FreezeEffect } from './FreezeEffect';
 import { SpeedEffect } from './SpeedEffect';
 import { HeartEffect } from './HeartEffect';
+import { ClockEffect } from './ClockEffect';
 
 /**
  * Un efecto por cada tipo declarado en PowerUpConfig: si añades un tipo al
@@ -21,6 +22,7 @@ const registry: {
   freeze: new FreezeEffect(),
   speed: new SpeedEffect(),
   heart: new HeartEffect(),
+  clock: new ClockEffect(),
 };
 
 export function applyPowerUp(ctx: PowerUpContext, config: PowerUpConfig): void {

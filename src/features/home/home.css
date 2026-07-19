@@ -257,6 +257,14 @@
   cursor: pointer;
 }
 
+.home-pass-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
 .home-pass-left {
   display: inline-flex;
   align-items: center;
@@ -271,6 +279,23 @@
   font-size: 1.4rem;
   color: #8b93b5;
   line-height: 1;
+}
+
+.home-teaser {
+  position: relative;
+  z-index: 1;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: rgba(139, 92, 246, 0.12);
+  font-size: 0.86rem;
+  color: #c4b5fd;
+  text-align: center;
+}
+
+.home-teaser strong {
+  color: #ede9fe;
 }
 
 /* Menu rows — cards del mockup */

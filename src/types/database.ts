@@ -1,6 +1,8 @@
 import type { LevelConfig, PowerUpConfig, EnemyConfig } from '@/types/level';
+import { DEFAULT_TIME_LIMIT_SEC } from '@/types/level';
 
 export const FREE_LEVEL_MAX = 7;
+/** @deprecated Paywall ya no usa este techo; especiales = gif/video. Conservado por copy legacy/medallas. */
 export const LEVELS_PER_SEASON = 70;
 
 export interface SeasonRow {
@@ -14,6 +16,8 @@ export interface SeasonRow {
   offer_starts_at: string | null;
   offer_ends_at: string | null;
   is_active: boolean;
+  /** ★ en esta temporada para liberar la siguiente (≤ techo free). */
+  stars_required_to_unlock_next: number;
 }
 
 export interface SeasonEntitlement {
@@ -23,6 +27,8 @@ export interface SeasonEntitlement {
   amount_clp: number;
   provider: string;
   provider_ref: string | null;
+  /** Fin de vigencia (~30 días). Null = no vigente tras Fase 5. */
+  expires_at: string | null;
 }
 
 export type SubscriptionStatus = 'pending' | 'authorized' | 'paused' | 'cancelled';
@@ -44,6 +50,11 @@ export const MP_MANAGE_SUBSCRIPTION_URL = 'https://www.mercadopago.cl/subscripti
 /** Tipo del contenido oculto de un nivel. */
 export type LevelMediaType = 'image' | 'gif' | 'video';
 
+/** True si el nivel exige pase (GIF/video). */
+export function levelRequiresPass(mediaType: LevelMediaType | string | null | undefined): boolean {
+  return mediaType === 'gif' || mediaType === 'video';
+}
+
 /** Fila de public.levels */
 export interface LevelRow {
   id: string;
@@ -60,6 +71,8 @@ export interface LevelRow {
   /** URL de procedencia del contenido (la define el admin); null si no hay. */
   source_url: string | null;
   is_active: boolean;
+  /** Si no null, goteo: no jugable hasta esa fecha ISO. */
+  available_at: string | null;
 }
 
 export interface LevelConfigJson {
@@ -67,17 +80,19 @@ export interface LevelConfigJson {
   lives: number;
   playerSpeed: number;
   minTimeMs?: number;
+  /** Límite de partida en segundos. 0 = sin límite. Si falta, el motor usa 120. */
+  timeLimitSec?: number;
   cellSize?: number;
   enemies: EnemyConfig[];
   powerUps: PowerUpConfig[];
 }
 
-export type ProgressStatus = 'locked' | 'unlocked' | 'completed' | 'gated';
+export type ProgressStatus = 'locked' | 'unlocked' | 'completed' | 'gated' | 'upcoming';
 
 export interface ProgressRow {
   user_id: string;
   level_id: string;
-  status: Exclude<ProgressStatus, 'gated'>;
+  status: Exclude<ProgressStatus, 'gated' | 'upcoming'>;
   best_pct: number | null;
   best_time_ms: number | null;
   attempts: number;
@@ -90,7 +105,7 @@ export interface LevelListItem {
   bestPct: number | null;
   bestTimeMs: number | null;
   attempts: number;
-  /** true si necesita pase (sort_order > 7 y sin entitlement) */
+  /** true si es GIF/video y el jugador no tiene pase (salvo ya completed). */
   needsPass: boolean;
   /** Thumb firmada para fondo del tile (teaser difuminado). */
   thumbUrl: string;
@@ -107,10 +122,14 @@ export interface GalleryItem {
 
 export function toLevelConfig(level: LevelRow, imageUrl: string): LevelConfig {
   const c = level.config;
+  const rawLimit = c.timeLimitSec;
+  const timeLimitSec =
+    rawLimit === 0 ? 0 : typeof rawLimit === 'number' && rawLimit > 0 ? rawLimit : DEFAULT_TIME_LIMIT_SEC;
   return {
     targetPct: c.targetPct,
     lives: c.lives,
     playerSpeed: c.playerSpeed,
+    timeLimitSec,
     enemies: c.enemies ?? [],
     powerUps: c.powerUps ?? [],
     imageUrl,

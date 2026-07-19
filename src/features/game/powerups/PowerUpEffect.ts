@@ -24,6 +24,8 @@ export interface PowerUpContext {
   boostSpeed(multiplier: number, durationMs: number): void;
   /** Suma vidas (emite actualización al HUD). */
   addLives(amount: number): void;
+  /** Suma segundos al cronómetro del nivel (si hay límite activo). */
+  addTime(addSec: number): void;
 }
 
 export interface PowerUpEffect<C extends PowerUpConfig = PowerUpConfig> {

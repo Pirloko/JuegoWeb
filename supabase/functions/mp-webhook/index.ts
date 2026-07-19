@@ -17,6 +17,11 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
+
+    // Verificación de firma antes de procesar nada (ver verifyMpSignature).
+    const signatureError = await verifyMpSignature(req, url);
+    if (signatureError) return signatureError;
+
     let topic =
       url.searchParams.get("type") ??
       url.searchParams.get("topic") ??
@@ -88,13 +93,28 @@ Deno.serve(async (req) => {
         return ok();
       }
 
-      // Cobro one-shot legacy: external_reference user|season|amount
+      // Cobro one-shot: external_reference tipado
+      // energy|userId|amount → pack corazones
+      // userId|seasonId|amount → pase legacy
       if (payment.status === "approved" && payment.external_reference?.includes("|")) {
         const parts = payment.external_reference.split("|");
+        if (parts[0] === "energy" && parts[1]) {
+          const userId = parts[1];
+          const amountClp = Number(parts[2] ?? payment.transaction_amount);
+          const { error } = await supabase.rpc("grant_energy_pack", {
+            p_user_id: userId,
+            p_amount_clp: Math.round(amountClp > 0 ? amountClp : 990),
+            p_provider: "mercadopago",
+            p_provider_ref: String(payment.id),
+          });
+          if (error) console.error("grant_energy_pack failed", error);
+          return ok();
+        }
+
         const userId = parts[0];
         const seasonId = parts[1];
         const amountClp = Number(parts[2] ?? payment.transaction_amount);
-        if (userId && seasonId && amountClp > 0) {
+        if (userId && seasonId && amountClp > 0 && userId !== "energy") {
           const { error } = await supabase.rpc("grant_season_pass", {
             p_user_id: userId,
             p_season_id: seasonId,
@@ -219,4 +239,82 @@ function ok() {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+/**
+ * Verifica la firma HMAC-SHA256 que Mercado Pago envía en `x-signature`.
+ * Manifest oficial: `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`
+ * (cada segmento solo se incluye si el dato está presente).
+ *
+ * Devuelve una Response de error si la firma es inválida/ausente, o null si
+ * es válida (o si el secret aún no está configurado — modo compatible).
+ * Secret: MERCADOPAGO_WEBHOOK_SECRET (Dashboard → Webhooks → clave secreta).
+ */
+async function verifyMpSignature(req: Request, url: URL): Promise<Response | null> {
+  const secret = Deno.env.get("MERCADOPAGO_WEBHOOK_SECRET");
+  if (!secret) {
+    // Sin secret configurado no se puede validar: se registra y se continúa
+    // para no romper la recepción. CONFIGURAR el secret activa el rechazo.
+    console.warn("MERCADOPAGO_WEBHOOK_SECRET no configurado: firma NO verificada");
+    return null;
+  }
+
+  const xSignature = req.headers.get("x-signature");
+  const xRequestId = req.headers.get("x-request-id");
+  if (!xSignature) {
+    console.error("webhook sin x-signature");
+    return new Response("missing signature", { status: 401 });
+  }
+
+  // x-signature: "ts=1704908010,v1=<hex>"
+  let ts: string | null = null;
+  let v1: string | null = null;
+  for (const part of xSignature.split(",")) {
+    const [k, val] = part.split("=").map((s) => s.trim());
+    if (k === "ts") ts = val;
+    else if (k === "v1") v1 = val;
+  }
+  if (!ts || !v1) {
+    console.error("x-signature malformado", xSignature);
+    return new Response("malformed signature", { status: 401 });
+  }
+
+  // data.id del query string; MP indica normalizar a minúsculas si es alfanumérico.
+  const rawId = url.searchParams.get("data.id") ?? url.searchParams.get("id");
+  const dataId = rawId ? rawId.toLowerCase() : null;
+
+  let manifest = "";
+  if (dataId) manifest += `id:${dataId};`;
+  if (xRequestId) manifest += `request-id:${xRequestId};`;
+  manifest += `ts:${ts};`;
+
+  const expected = await hmacSha256Hex(secret, manifest);
+  if (!timingSafeEqualHex(expected, v1)) {
+    console.error("firma inválida");
+    return new Response("invalid signature", { status: 401 });
+  }
+
+  return null;
+}
+
+async function hmacSha256Hex(secret: string, message: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Comparación en tiempo constante de dos cadenas hex. */
+function timingSafeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
 }

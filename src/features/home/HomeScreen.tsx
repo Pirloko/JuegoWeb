@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/auth-context';
 import InstallBanner from '@/components/InstallBanner';
 import BrandLogo from '@/components/BrandLogo';
-import { fetchActiveSeason, hasSeasonPass, seasonPricing } from '@/services/supabase/seasons';
+import { fetchActiveSeason, fetchNextSeason, hasSeasonPass, seasonPricing } from '@/services/supabase/seasons';
 import { fetchLevelsWithProgress } from '@/services/supabase/levels';
-import { formatClp, FREE_LEVEL_MAX } from '@/types/database';
+import { formatClp } from '@/types/database';
 import type { SeasonRow } from '@/types/database';
+import { isSeasonTeaserWindow } from '@/features/progression/progression';
 import '@/features/legal/legal.css';
 import './home.css';
 
@@ -78,6 +79,7 @@ export default function HomeScreen() {
   const displayName = user?.user_metadata?.username ?? user?.email?.split('@')[0] ?? 'Jugador';
 
   const [season, setSeason] = useState<SeasonRow | null>(null);
+  const [nextSeason, setNextSeason] = useState<SeasonRow | null>(null);
   const [completed, setCompleted] = useState(0);
   const [levelCount, setLevelCount] = useState(0);
   const [owned, setOwned] = useState(false);
@@ -89,12 +91,14 @@ export default function HomeScreen() {
       try {
         const active = await fetchActiveSeason();
         if (cancelled || !active) return;
-        const [list, pass] = await Promise.all([
+        const [list, pass, teaser] = await Promise.all([
           fetchLevelsWithProgress(active.id),
           hasSeasonPass(active.id),
+          fetchNextSeason(active).catch(() => null),
         ]);
         if (cancelled) return;
         setSeason(active);
+        setNextSeason(teaser);
         setOwned(pass);
         setCompleted(list.filter((i) => i.status === 'completed').length);
         setLevelCount(list.length);
@@ -153,6 +157,9 @@ export default function HomeScreen() {
   }
 
   const pricing = season ? seasonPricing(season) : null;
+  const showTeaser = Boolean(
+    season && nextSeason && isSeasonTeaserWindow(season.ends_at),
+  );
 
   return (
     <main className="home">
@@ -203,7 +210,7 @@ export default function HomeScreen() {
               </span>
             )}
             <span className="home-meta-item home-meta-free">
-              {owned ? 'Suscripción' : `Free 1–${FREE_LEVEL_MAX}`}
+              {owned ? 'Pase activo' : 'Gratis + especiales con pase'}
             </span>
           </div>
         )}
@@ -222,11 +229,23 @@ export default function HomeScreen() {
             <span className="home-pass-left">
               <CrownIcon />
               Suscripción · {formatClp(pricing.effectiveClp)}/mes
+              <span className="home-pass-sub">GIF y video</span>
             </span>
             <span className="home-pass-chevron" aria-hidden>
               ›
             </span>
           </button>
+        )}
+
+        {showTeaser && nextSeason && (
+          <p className="home-teaser" role="status">
+            Pronto: <strong>{nextSeason.name}</strong>
+            {' · '}
+            {new Date(nextSeason.starts_at).toLocaleDateString('es-CL', {
+              day: 'numeric',
+              month: 'short',
+            })}
+          </p>
         )}
       </section>
 

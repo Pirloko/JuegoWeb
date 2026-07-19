@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { LevelConfig, LevelResultStats } from '@/types/level';
-import { completeLevel, fetchPlayableLevel } from '@/services/supabase/levels';
+import { completeLevel, fetchNextPlayableLevelId, fetchPlayableLevel } from '@/services/supabase/levels';
 import { awardBadges } from '@/services/supabase/badges';
 import { createSignedImageUrl } from '@/services/supabase/storage';
-import { endGameSession, startGameSession } from '@/services/supabase/gameSessions';
+import { endGameSession } from '@/services/supabase/gameSessions';
+import { beginLevelAttempt, fetchUserEnergy, formatRefillCountdown, ENERGY_PACK_PRICE_CLP, startEnergyPackCheckout } from '@/services/supabase/energy';
+import { formatClp } from '@/types/database';
 import { BADGE_CATALOG, type BadgeId } from '@/features/progression/badgeCatalog';
+import { formatAvailableAt } from '@/features/progression/progression';
 import RevealedMedia from '@/components/RevealedMedia';
 import type { LevelMediaType } from '@/types/database';
 import { fullscreenService } from '@/services/fullscreen/FullscreenService';
@@ -13,6 +16,13 @@ import { markFirstLevelCompleted } from '@/services/pwa/installPrompt';
 import { gameEvents } from './core/GameEvents';
 import GameCanvas from './GameCanvas';
 import './game.css';
+
+function formatRemain(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 interface Result {
   won: boolean;
@@ -22,6 +32,9 @@ interface Result {
   newBadges: BadgeId[];
   /** Signed URL del GIF/video si el nivel es especial (para el revelado). */
   mediaUrl: string | null;
+  /** Tras pulsar "Revelar imagen". */
+  revealed: boolean;
+  nextLevelId: string | null;
 }
 
 export default function GameScreen() {
@@ -36,12 +49,20 @@ export default function GameScreen() {
   });
   const [loadError, setLoadError] = useState<string | null>(null);
   const [gateSeasonId, setGateSeasonId] = useState<string | null>(null);
+  const levelSeasonIdRef = useRef<string | null>(null);
+  const [outOfEnergy, setOutOfEnergy] = useState(false);
+  const [energyHearts, setEnergyHearts] = useState<number | null>(null);
+  const [energyMax, setEnergyMax] = useState(5);
+  const [energyWaived, setEnergyWaived] = useState(false);
+  const [nextRefillLabel, setNextRefillLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [buyingPack, setBuyingPack] = useState(false);
 
   const [runId, setRunId] = useState(0);
   const [pct, setPct] = useState(0);
-  const [lives, setLives] = useState(0);
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  const [levelSortOrder, setLevelSortOrder] = useState(0);
   const [fsSupported] = useState(() => fullscreenService.isSupported());
   const [fsActive, setFsActive] = useState(() => fullscreenService.isActive());
   const [needsFsReentry, setNeedsFsReentry] = useState(false);
@@ -74,24 +95,41 @@ export default function GameScreen() {
           setLoadError('Nivel no encontrado');
           return;
         }
+        if (data.needsPass && data.status === 'completed') {
+          navigate(`/gallery?level=${levelId}`, { replace: true });
+          return;
+        }
         if (data.needsPass || data.status === 'gated') {
           setGateSeasonId(data.level.season_id);
-          setLoadError('Necesitas una suscripción activa');
+          setLoadError('Necesitas el pase para jugar este especial (GIF/video)');
           return;
         }
         if (data.status === 'locked') {
           setLoadError('Este nivel está bloqueado');
           return;
         }
+        if (data.status === 'upcoming') {
+          const when = data.level.available_at
+            ? formatAvailableAt(data.level.available_at)
+            : '';
+          setLoadError(
+            when ? `Este nivel llega pronto (${when})` : 'Este nivel llega pronto',
+          );
+          return;
+        }
         setGateSeasonId(null);
+        levelSeasonIdRef.current = data.level.season_id;
         setConfig(data.config);
         setLevelName(data.level.name);
+        setLevelSortOrder(data.level.sort_order);
         setLevelMedia({
           type: data.level.media_type ?? 'image',
           path: data.level.media_path ?? null,
         });
-        setLives(data.config.lives);
         setPct(0);
+        setRemainingMs(
+          data.config.timeLimitSec > 0 ? data.config.timeLimitSec * 1000 : null,
+        );
         setResult(null);
         savedRef.current = false;
       } catch (e) {
@@ -108,7 +146,7 @@ export default function GameScreen() {
     };
   }, [levelId]);
 
-  // Abrir sesión al montar partida jugable; cerrar al desmontar si sigue abierta.
+  // Abrir sesión al montar / reintentar (corazones se gastan al fallar, no aquí).
   useEffect(() => {
     if (!config || !levelId) return;
 
@@ -117,25 +155,53 @@ export default function GameScreen() {
     sessionIdRef.current = null;
     pendingOutcomeRef.current = null;
     sessionStartedAtRef.current = Date.now();
+    setOutOfEnergy(false);
 
     void (async () => {
-      const id = await startGameSession(levelId);
-      if (cancelled) {
-        if (id) {
-          const pending = pendingOutcomeRef.current;
-          void endGameSession(
-            id,
-            pending?.outcome ?? 'abandoned',
-            pending?.durationMs ?? Date.now() - sessionStartedAtRef.current,
-          );
+      try {
+        const attempt = await beginLevelAttempt(levelId);
+        if (cancelled) {
+          if (attempt.sessionId) {
+            const pending = pendingOutcomeRef.current;
+            void endGameSession(
+              attempt.sessionId,
+              pending?.outcome ?? 'abandoned',
+              pending?.durationMs ?? Date.now() - sessionStartedAtRef.current,
+            );
+          }
+          return;
         }
-        return;
-      }
-      sessionIdRef.current = id;
-      const pending = pendingOutcomeRef.current;
-      if (id && pending && !sessionClosedRef.current) {
-        sessionClosedRef.current = true;
-        void endGameSession(id, pending.outcome, pending.durationMs);
+        setEnergyHearts(attempt.hearts);
+        setEnergyMax(attempt.max);
+        setEnergyWaived(Boolean(attempt.energyWaived));
+        setNextRefillLabel(formatRefillCountdown(attempt.nextRefillAt));
+        sessionIdRef.current = attempt.sessionId ?? null;
+        const pending = pendingOutcomeRef.current;
+        if (attempt.sessionId && pending && !sessionClosedRef.current) {
+          sessionClosedRef.current = true;
+          void endGameSession(attempt.sessionId, pending.outcome, pending.durationMs);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        const msg = e instanceof Error ? e.message : '';
+        if (msg === 'OUT_OF_ENERGY') {
+          setOutOfEnergy(true);
+          setConfig(null);
+          setGateSeasonId(levelSeasonIdRef.current);
+          setLoadError('OUT_OF_ENERGY');
+          try {
+            const snap = await fetchUserEnergy();
+            setEnergyHearts(snap.hearts);
+            setEnergyMax(snap.max);
+            setNextRefillLabel(formatRefillCountdown(snap.nextRefillAt));
+          } catch {
+            setEnergyHearts(0);
+            setNextRefillLabel(null);
+          }
+          return;
+        }
+        setLoadError(msg || 'No se pudo iniciar la partida');
+        setConfig(null);
       }
     })();
 
@@ -160,12 +226,23 @@ export default function GameScreen() {
       const id = sessionIdRef.current;
       if (!id) return;
       sessionClosedRef.current = true;
-      void endGameSession(id, outcome, timeMs);
+      void endGameSession(id, outcome, timeMs).then((energy) => {
+        if (!energy) return;
+        setEnergyHearts(energy.hearts);
+        setEnergyMax(energy.max);
+        setEnergyWaived(Boolean(energy.energyWaived));
+        setNextRefillLabel(formatRefillCountdown(energy.nextRefillAt));
+        if (outcome === 'failed' && !energy.energyWaived && energy.hearts < 1) {
+          setOutOfEnergy(true);
+        }
+      });
     };
 
     const unsubscribes = [
       gameEvents.on('game:progress', ({ conqueredPct }) => setPct(conqueredPct)),
-      gameEvents.on('game:life-lost', ({ livesLeft }) => setLives(livesLeft)),
+      gameEvents.on('game:time', ({ remainingMs: ms, limited }) => {
+        setRemainingMs(limited ? ms : null);
+      }),
       gameEvents.on('game:completed', (stats) => {
         closeSession('completed', stats.timeMs);
         setResult({
@@ -175,6 +252,8 @@ export default function GameScreen() {
           saving: true,
           newBadges: [],
           mediaUrl: null,
+          revealed: false,
+          nextLevelId: null,
         });
       }),
       gameEvents.on('game:failed', (stats) => {
@@ -186,6 +265,8 @@ export default function GameScreen() {
           saving: false,
           newBadges: [],
           mediaUrl: null,
+          revealed: false,
+          nextLevelId: null,
         });
       }),
     ];
@@ -227,7 +308,18 @@ export default function GameScreen() {
         if (levelMedia.type !== 'image' && levelMedia.path) {
           mediaUrl = await createSignedImageUrl(levelMedia.path);
         }
-        setResult((r) => (r ? { ...r, saving: false, saveError: null, newBadges, mediaUrl } : r));
+        let nextLevelId: string | null = null;
+        const seasonId = levelSeasonIdRef.current;
+        if (seasonId) {
+          try {
+            nextLevelId = await fetchNextPlayableLevelId(seasonId, levelSortOrder);
+          } catch {
+            nextLevelId = null;
+          }
+        }
+        setResult((r) =>
+          r ? { ...r, saving: false, saveError: null, newBadges, mediaUrl, nextLevelId } : r,
+        );
       } catch (e) {
         setResult((r) =>
           r
@@ -240,17 +332,35 @@ export default function GameScreen() {
         );
       }
     })();
-  }, [result, levelId, levelMedia]);
+  }, [result, levelId, levelMedia, levelSortOrder]);
 
   const retry = () => {
     if (!config) return;
+    if (!energyWaived && energyHearts != null && energyHearts < 1) {
+      setOutOfEnergy(true);
+      setConfig(null);
+      setLoadError('OUT_OF_ENERGY');
+      setGateSeasonId(levelSeasonIdRef.current);
+      return;
+    }
     setPct(0);
-    setLives(config.lives);
+    setRemainingMs(config.timeLimitSec > 0 ? config.timeLimitSec * 1000 : null);
     setResult(null);
     savedRef.current = false;
     setNeedsFsReentry(false);
     setRunId((n) => n + 1);
   };
+
+  function revealImage() {
+    gameEvents.emit('game:reveal', {});
+    setResult((r) => (r ? { ...r, revealed: true } : r));
+  }
+
+  async function goNextLevel() {
+    if (!result?.nextLevelId) return;
+    await fullscreenService.exit();
+    navigate(`/play/${result.nextLevelId}`);
+  }
 
   async function reenterFullscreen() {
     const ok = await fullscreenService.request();
@@ -265,21 +375,80 @@ export default function GameScreen() {
     navigate('/levels');
   }
 
+  async function buyEnergyPack() {
+    setBuyingPack(true);
+    try {
+      const { url } = await startEnergyPackCheckout();
+      window.location.href = url;
+    } catch {
+      setBuyingPack(false);
+    }
+  }
+
   if (loading) {
     return <div className="screen-loading">Cargando nivel…</div>;
   }
 
   if (loadError || !config) {
+    if (outOfEnergy) {
+      return (
+        <div className="energy-gate">
+          <div className="energy-gate-card">
+            <span className="energy-gate-icon" aria-hidden>
+              {'♡'.repeat(energyMax)}
+            </span>
+            <h2>Sin corazones</h2>
+            <p>
+              Pierdes <strong>1 corazón</strong> si un enemigo te mata o se acaba el tiempo.
+              Se recarga solo con el tiempo
+              {nextRefillLabel && nextRefillLabel !== 'ya' ? (
+                <>
+                  : próximo en <strong>{nextRefillLabel}</strong>
+                </>
+              ) : (
+                '.'
+              )}
+            </p>
+            <p className="energy-gate-aside">
+              Con el pase fallas <strong>sin gastar</strong> corazones.
+            </p>
+            <button
+              className="btn-cta"
+              type="button"
+              disabled={buyingPack}
+              onClick={() => void buyEnergyPack()}
+            >
+              {buyingPack
+                ? 'Abriendo…'
+                : `Rellenar ${energyMax}♥ · ${formatClp(ENERGY_PACK_PRICE_CLP)}`}
+            </button>
+            {gateSeasonId && (
+              <button
+                className="btn-ghost"
+                type="button"
+                onClick={() => navigate(`/pase/${gateSeasonId}`)}
+              >
+                Activar pase
+              </button>
+            )}
+            <button className="btn-ghost" type="button" onClick={() => navigate('/levels')}>
+              Volver a niveles
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="screen-loading">
         <p>{loadError ?? 'Nivel no disponible'}</p>
         {gateSeasonId && (
           <button
-            className="btn-primary"
+            className="btn-cta"
             type="button"
             onClick={() => navigate(`/pase/${gateSeasonId}`)}
           >
-            Desbloquear con suscripción
+            Desbloquear especial (GIF/video)
           </button>
         )}
         <button className="btn-ghost" type="button" onClick={() => navigate('/levels')}>
@@ -298,7 +467,26 @@ export default function GameScreen() {
         <span className="hud-progress">
           {Math.floor(pct)}% / {config.targetPct}%
         </span>
-        <span className="hud-lives">{'♥'.repeat(Math.max(lives, 0)) || '—'}</span>
+        {remainingMs != null && (
+          <span
+            className={`hud-time${remainingMs <= 15_000 ? ' is-urgent' : ''}`}
+            aria-label="Tiempo restante"
+          >
+            {formatRemain(remainingMs)}
+          </span>
+        )}
+        {energyHearts != null && (
+          <span
+            className="hud-energy"
+            title={
+              energyWaived
+                ? 'Pase: fallar no gasta corazones'
+                : 'Corazones: se pierde 1 al fallar'
+            }
+          >
+            {energyWaived ? '∞♥' : `${energyHearts}♥`}
+          </span>
+        )}
       </header>
 
       <div className="game-subbar">
@@ -332,12 +520,14 @@ export default function GameScreen() {
           <div className="result-card">
             <h2>
               {result.won
-                ? levelMedia.type !== 'image'
-                  ? 'Contenido desbloqueado, cachero'
+                ? result.revealed
+                  ? levelMedia.type !== 'image'
+                    ? 'Contenido desbloqueado, cachero'
+                    : '¡Imagen revelada!'
                   : '¡Territorio conquistado!'
                 : 'Has perdido'}
             </h2>
-            {result.won && levelMedia.type !== 'image' && (
+            {result.won && result.revealed && levelMedia.type !== 'image' && (
               <RevealedMedia
                 mediaType={levelMedia.type}
                 mediaUrl={result.mediaUrl}
@@ -346,10 +536,25 @@ export default function GameScreen() {
                 className="result-media"
               />
             )}
+            {result.won && result.revealed && levelMedia.type === 'image' && (
+              <img
+                className="result-media"
+                src={config.imageUrl}
+                alt={levelName}
+                draggable={false}
+              />
+            )}
             <p className="result-stats">
               Conquistado: {Math.floor(result.stats.conqueredPct)}% ·{' '}
               {(result.stats.timeMs / 1000).toFixed(1)}s
             </p>
+            {!result.won && !energyWaived && (
+              <p className="result-save">
+                {energyHearts != null && energyHearts < 1
+                  ? 'Sin corazones · espera o compra un pack'
+                  : '−1 corazón'}
+              </p>
+            )}
             {result.won && result.saving && <p className="result-save">Guardando progreso…</p>}
             {result.won && result.saveError && (
               <p className="result-save-error">{result.saveError}</p>
@@ -357,7 +562,7 @@ export default function GameScreen() {
             {result.won && !result.saving && !result.saveError && (
               <p className="result-save-ok">Progreso guardado</p>
             )}
-            {result.won && result.newBadges.length > 0 && (
+            {result.won && result.revealed && result.newBadges.length > 0 && (
               <div className="result-badges">
                 {result.newBadges.map((id) => (
                   <p key={id} className="result-badge">
@@ -372,12 +577,61 @@ export default function GameScreen() {
               </div>
             )}
             <div className="result-actions">
-              <button className="btn-ghost" type="button" onClick={() => void exitToLevels()}>
-                Niveles
-              </button>
-              <button className="btn-primary" type="button" onClick={retry}>
-                Reintentar
-              </button>
+              {result.won ? (
+                <>
+                  {!result.revealed ? (
+                    <button
+                      className="btn-primary"
+                      type="button"
+                      disabled={result.saving}
+                      onClick={revealImage}
+                    >
+                      Revelar imagen
+                    </button>
+                  ) : result.nextLevelId ? (
+                    <button
+                      className="btn-primary"
+                      type="button"
+                      onClick={() => void goNextLevel()}
+                    >
+                      Siguiente nivel
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-primary"
+                      type="button"
+                      onClick={() => void exitToLevels()}
+                    >
+                      Ver niveles
+                    </button>
+                  )}
+                  <button className="btn-ghost" type="button" onClick={() => void exitToLevels()}>
+                    Niveles
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="btn-ghost" type="button" onClick={() => void exitToLevels()}>
+                    Niveles
+                  </button>
+                  {energyWaived || (energyHearts != null && energyHearts > 0) ? (
+                    <button className="btn-primary" type="button" onClick={retry}>
+                      Reintentar
+                    </button>
+                  ) : (
+                    <button
+                      className="btn-primary"
+                      type="button"
+                      disabled={buyingPack}
+                      onClick={() => void buyEnergyPack()}
+                    >
+                      {buyingPack
+                        ? 'Abriendo…'
+                        : `Pack ${energyMax}♥ · ${formatClp(ENERGY_PACK_PRICE_CLP)}`}
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>

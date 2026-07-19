@@ -11,6 +11,7 @@ export function defaultLevelConfig(): LevelConfigJson {
     lives: 3,
     playerSpeed: 280,
     minTimeMs: 8000,
+    timeLimitSec: 120,
     cellSize: 8,
     enemies: [{ type: 'basic', speed: 200 }],
     powerUps: [
@@ -59,6 +60,7 @@ export interface SeasonWriteInput {
   offer_starts_at: string | null;
   offer_ends_at: string | null;
   is_active: boolean;
+  stars_required_to_unlock_next: number;
 }
 
 export async function createSeason(input: SeasonWriteInput): Promise<SeasonRow> {
@@ -94,6 +96,16 @@ export async function adminGrantSeasonPass(
   if (error) throw new Error(error.message);
 }
 
+/** Rellena corazones al máximo (testing / soporte). Requiere is_admin. */
+export async function adminGrantEnergyPack(userId: string): Promise<void> {
+  const { error } = await getSupabase().rpc('grant_energy_pack', {
+    p_user_id: userId,
+    p_provider: 'admin',
+    p_provider_ref: `admin-energy-${Date.now()}`,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function fetchLevelAdmin(id: string): Promise<LevelRow | null> {
   const { data, error } = await getSupabase().from('levels').select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(error.message);
@@ -111,6 +123,8 @@ export interface LevelWriteInput {
   media_type: LevelMediaType;
   media_path: string | null;
   source_url: string | null;
+  /** ISO o null = disponible ya. */
+  available_at: string | null;
 }
 
 export async function createLevel(input: LevelWriteInput): Promise<LevelRow> {

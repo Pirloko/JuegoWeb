@@ -69,9 +69,11 @@ La oferta se activa por fechas en `seasons` (Admin), no hardcodeada en el client
 ## Pagos (Mercado Pago · Chile)
 
 - Edge Function `create-checkout` → **preapproval** mensual.
-- Webhook `mp-webhook` → RPC `upsert_subscription_from_mp` (`authorized` / `cancelled` / `paused`).
+- Edge Function `create-energy-checkout` → preference one-shot (pack corazones).
+- Webhook `mp-webhook` → RPC `upsert_subscription_from_mp` / `grant_season_pass` /
+  `grant_energy_pack` (`energy|userId|amount`).
 - Tabla `subscriptions` + helper `has_season_pass` (sub activa **o** entitlement legacy).
-- Admin puede otorgar acceso de prueba vía `grant_season_pass`.
+- Admin puede otorgar acceso de prueba vía `grant_season_pass` y pack vía `grant_energy_pack`.
 - IAP Apple/Google: fuera de alcance.
 
 ---

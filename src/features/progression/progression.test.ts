@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { milestonesForTotal, nextMilestone, seasonProgress, starsForLevel } from './progression';
+import {
+  countableStarsTowardSeasonGate,
+  defaultStarsRequiredToUnlockNext,
+  freeStarCap,
+  isLevelReleased,
+  isSeasonStarGateMet,
+  isSeasonStarGateValid,
+  isSeasonTeaserWindow,
+  milestonesForTotal,
+  nextMilestone,
+  seasonProgress,
+  seasonRhythmHint,
+  starsForLevel,
+} from './progression';
 import { seasonGoalPhrase } from './copy';
 
 describe('milestonesForTotal', () => {
@@ -97,5 +110,157 @@ describe('seasonGoalPhrase', () => {
 
   it('temporada completa', () => {
     expect(seasonGoalPhrase(70, 70)).toMatch(/Wena cachero/);
+  });
+});
+
+describe('defaultStarsRequiredToUnlockNext', () => {
+  it('tabla T1→T4', () => {
+    expect(defaultStarsRequiredToUnlockNext(0)).toBe(20);
+    expect(defaultStarsRequiredToUnlockNext(1)).toBe(28);
+    expect(defaultStarsRequiredToUnlockNext(2)).toBe(36);
+    expect(defaultStarsRequiredToUnlockNext(3)).toBe(44);
+  });
+
+  it('escalón +8 con cap 60', () => {
+    expect(defaultStarsRequiredToUnlockNext(4)).toBe(52);
+    expect(defaultStarsRequiredToUnlockNext(5)).toBe(60);
+    expect(defaultStarsRequiredToUnlockNext(10)).toBe(60);
+  });
+});
+
+describe('freeStarCap + isSeasonStarGateValid', () => {
+  const tenLevelsThreeSpecial = [
+    ...Array.from({ length: 7 }, () => ({ mediaType: 'image' as const })),
+    { mediaType: 'gif' as const },
+    { mediaType: 'video' as const },
+    { mediaType: 'image' as const },
+  ];
+
+  it('cap free = 3 × niveles imagen', () => {
+    expect(freeStarCap(tenLevelsThreeSpecial)).toBe(24); // 8 imagen × 3
+  });
+
+  it('gate 20★ es válido con 8 niveles imagen', () => {
+    expect(isSeasonStarGateValid(tenLevelsThreeSpecial, 20)).toBe(true);
+  });
+
+  it('gate > cap free es inválido (anti soft-lock)', () => {
+    expect(isSeasonStarGateValid(tenLevelsThreeSpecial, 25)).toBe(false);
+  });
+
+  it('solo especiales: solo required 0 es válido', () => {
+    const onlySpecial = [{ mediaType: 'gif' as const }, { mediaType: 'video' as const }];
+    expect(freeStarCap(onlySpecial)).toBe(0);
+    expect(isSeasonStarGateValid(onlySpecial, 0)).toBe(true);
+    expect(isSeasonStarGateValid(onlySpecial, 1)).toBe(false);
+  });
+});
+
+describe('countableStarsTowardSeasonGate', () => {
+  const target = 60;
+
+  it('free alcanza 20★ solo con imagen; especiales sin completar no cuentan', () => {
+    const levels = [
+      ...Array.from({ length: 7 }, () => ({
+        mediaType: 'image' as const,
+        bestPct: 95,
+        targetPct: target,
+      })),
+      { mediaType: 'gif' as const, bestPct: null, targetPct: target },
+      { mediaType: 'video' as const, bestPct: null, targetPct: target },
+      { mediaType: 'image' as const, bestPct: 95, targetPct: target },
+    ];
+    // 8 imagen × 3★ = 24
+    expect(countableStarsTowardSeasonGate(levels)).toBe(24);
+    expect(isSeasonStarGateMet(levels, 20)).toBe(true);
+  });
+
+  it('especial no jugado aporta 0 aunque el gate sea alto', () => {
+    const levels = [
+      { mediaType: 'image' as const, bestPct: 60, targetPct: target },
+      { mediaType: 'gif' as const, bestPct: null, targetPct: target },
+    ];
+    expect(countableStarsTowardSeasonGate(levels)).toBe(1);
+    expect(isSeasonStarGateMet(levels, 20)).toBe(false);
+  });
+
+  it('especial completado sí suma ★ (bonus premium)', () => {
+    const levels = [
+      { mediaType: 'image' as const, bestPct: 60, targetPct: target },
+      { mediaType: 'gif' as const, bestPct: 95, targetPct: target },
+    ];
+    expect(countableStarsTowardSeasonGate(levels)).toBe(1 + 3);
+  });
+});
+
+describe('isLevelReleased', () => {
+  const now = Date.parse('2026-07-19T12:00:00.000Z');
+
+  it('null = liberado', () => {
+    expect(isLevelReleased(null, now)).toBe(true);
+    expect(isLevelReleased(undefined, now)).toBe(true);
+  });
+
+  it('futuro = no liberado', () => {
+    expect(isLevelReleased('2026-07-20T00:00:00.000Z', now)).toBe(false);
+  });
+
+  it('pasado = liberado', () => {
+    expect(isLevelReleased('2026-07-18T00:00:00.000Z', now)).toBe(true);
+  });
+});
+
+describe('isSeasonTeaserWindow', () => {
+  const ends = '2026-07-31T00:00:00.000Z';
+
+  it('fuera de ventana', () => {
+    expect(isSeasonTeaserWindow(ends, Date.parse('2026-07-10T00:00:00.000Z'))).toBe(false);
+  });
+
+  it('últimos 7 días', () => {
+    expect(isSeasonTeaserWindow(ends, Date.parse('2026-07-25T00:00:00.000Z'))).toBe(true);
+  });
+
+  it('después de ends_at no', () => {
+    expect(isSeasonTeaserWindow(ends, Date.parse('2026-08-01T00:00:00.000Z'))).toBe(false);
+  });
+});
+
+describe('seasonRhythmHint', () => {
+  const now = Date.parse('2026-07-19T12:00:00.000Z');
+
+  it('null si hay unlocked liberado', () => {
+    expect(
+      seasonRhythmHint(
+        [{ status: 'unlocked', availableAt: null, bestPct: null, targetPct: 60 }],
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it('drip si hay available_at futuro y nada open', () => {
+    const hint = seasonRhythmHint(
+      [
+        { status: 'completed', availableAt: null, bestPct: 70, targetPct: 60 },
+        {
+          status: 'unlocked',
+          availableAt: '2026-07-22T00:00:00.000Z',
+          bestPct: null,
+          targetPct: 60,
+        },
+      ],
+      now,
+    );
+    expect(hint?.kind).toBe('drip');
+    expect(hint?.nextAt).toBe('2026-07-22T00:00:00.000Z');
+  });
+
+  it('stars si todo hecho pero sin 3★', () => {
+    const hint = seasonRhythmHint(
+      [{ status: 'completed', availableAt: null, bestPct: 70, targetPct: 60 }],
+      now,
+    );
+    expect(hint?.kind).toBe('stars');
+    expect(hint?.imperfect).toBe(1);
   });
 });

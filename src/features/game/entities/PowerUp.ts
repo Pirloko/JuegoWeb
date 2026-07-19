@@ -10,6 +10,7 @@ const EMOJI: Record<PowerUpConfig['type'], string> = {
   freeze: '❄️',
   speed: '💨',
   heart: '❤️',
+  clock: '⏱️',
 };
 
 /** Power-up recogible en el mapa. El efecto lo resuelve powerups/registry. */

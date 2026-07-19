@@ -3,5 +3,8 @@
 [functions.create-checkout]
 verify_jwt = true
 
+[functions.create-energy-checkout]
+verify_jwt = true
+
 [functions.mp-webhook]
 verify_jwt = false

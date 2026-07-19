@@ -9,7 +9,8 @@ hasta alcanzar el % objetivo del nivel.
 ```
 
 Derrota: un enemigo toca al jugador o su ruta activa, o el jugador cruza su
-propia ruta → pierde una vida. Sin vidas → nivel fallido.
+propia ruta, o se agota el tiempo → **nivel fallido** y se pierde **1 corazón**
+(salvo pase activo). Ya no hay vidas in-match separadas: corazones = vidas.
 
 ## Modelo: grid de celdas
 
@@ -87,6 +88,9 @@ territorio conquistado los encierra progresivamente.
 ## Victoria / derrota
 
 - Victoria: `conqueredPct >= level.config.targetPct` (típico 75–80 %).
-- Derrota: vidas = 0.
+- Derrota: vidas = 0, **o** se acaba el cronómetro (`timeLimitSec`).
+- Cronómetro: `timeLimitSec` en `levels.config` (default **120**). `0` = sin
+  límite. El power-up Reloj (`clock`, `params.addSec`) suma segundos al
+  tiempo restante.
 - Al terminar, Phaser emite `game:completed` / `game:failed` con stats
   (tiempo, %, power-ups usados); React persiste y muestra resultado.

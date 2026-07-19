@@ -6,6 +6,7 @@ import {
   resolvePlayableLevelImageUrl,
 } from '@/services/supabase/storage';
 import { fetchActiveSeason, hasSeasonPass } from '@/services/supabase/seasons';
+import { isLevelReleased } from '@/features/progression/progression';
 import type {
   GalleryItem,
   LevelListItem,
@@ -13,7 +14,7 @@ import type {
   ProgressRow,
   ProgressStatus,
 } from '@/types/database';
-import { FREE_LEVEL_MAX, toLevelConfig } from '@/types/database';
+import { levelRequiresPass, toLevelConfig } from '@/types/database';
 import type { LevelConfig } from '@/types/level';
 
 export async function fetchLevelsWithProgress(seasonId: string): Promise<LevelListItem[]> {
@@ -40,10 +41,16 @@ export async function fetchLevelsWithProgress(seasonId: string): Promise<LevelLi
   return Promise.all(
     rows.map(async (level) => {
       const p = byLevel.get(level.id);
-      const needsPass = level.sort_order > FREE_LEVEL_MAX && !owned;
+      const special = levelRequiresPass(level.media_type);
+      const needsPass = special && !owned;
       let status: ProgressStatus = p?.status ?? 'locked';
+      // Especial sin pase: visible como gated (salvo ya revelado)
       if (needsPass && status !== 'completed') {
         status = 'gated';
+      }
+      // Goteo: aún no salió (prioridad sobre unlocked/gated/locked)
+      if (!isLevelReleased(level.available_at) && status !== 'completed') {
+        status = 'upcoming';
       }
       const thumbUrl = await resolveLevelImageUrl(level.thumb_path, level.sort_order);
       return {
@@ -79,14 +86,24 @@ export async function fetchPlayableLevel(levelId: string): Promise<{
 
   const row = level as LevelRow;
   const owned = await hasSeasonPass(row.season_id);
-  const needsPass = row.sort_order > FREE_LEVEL_MAX && !owned;
-  const status: ProgressStatus = (progress as ProgressRow | null)?.status ?? 'locked';
+  const needsPass = levelRequiresPass(row.media_type) && !owned;
+  let status: ProgressStatus = (progress as ProgressRow | null)?.status ?? 'locked';
 
+  if (!isLevelReleased(row.available_at) && status !== 'completed') {
+    return {
+      level: row,
+      config: toLevelConfig(row, localLevelImageUrl(row.sort_order)),
+      status: 'upcoming',
+      needsPass,
+    };
+  }
+
+  // Especial sin pase: no se juega. Si ya está revelado, el cliente manda a galería.
   if (needsPass) {
     return {
       level: row,
       config: toLevelConfig(row, localLevelImageUrl(row.sort_order)),
-      status: 'gated',
+      status: status === 'completed' ? 'completed' : 'gated',
       needsPass: true,
     };
   }
@@ -155,4 +172,19 @@ export async function completeLevel(
 
   if (error) throw new Error(error.message);
   return data as CompleteLevelResult;
+}
+
+/** Siguiente nivel jugable de la temporada (misma lista que el mapa). */
+export async function fetchNextPlayableLevelId(
+  seasonId: string,
+  afterSortOrder: number,
+): Promise<string | null> {
+  const items = await fetchLevelsWithProgress(seasonId);
+  const next = items.find(
+    (i) =>
+      i.level.sort_order > afterSortOrder &&
+      (i.status === 'unlocked' || i.status === 'completed') &&
+      !i.needsPass,
+  );
+  return next?.level.id ?? null;
 }

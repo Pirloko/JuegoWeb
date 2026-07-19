@@ -9,8 +9,6 @@ import {
 } from '@/services/supabase/seasons';
 import {
   formatClp,
-  FREE_LEVEL_MAX,
-  LEVELS_PER_SEASON,
   MP_MANAGE_SUBSCRIPTION_URL,
 } from '@/types/database';
 import type { SeasonRow } from '@/types/database';
@@ -90,7 +88,6 @@ export default function SeasonPassScreen() {
   if (!season) return null;
 
   const pricing = seasonPricing(season);
-  const paidLevels = LEVELS_PER_SEASON - FREE_LEVEL_MAX;
   const staticPay = usesStaticPaymentLink();
 
   return (
@@ -99,11 +96,11 @@ export default function SeasonPassScreen() {
         ←
       </button>
 
-      <p className="pass-eyebrow">Suscripción mensual</p>
+      <p className="pass-eyebrow">Pase premium · 30 días</p>
       <h1 className="pass-title">{season.name}</h1>
       <p className="pass-lead">
-        Accede a los niveles {FREE_LEVEL_MAX + 1}–{LEVELS_PER_SEASON} mientras tu suscripción esté
-        activa. Se renueva cada mes; tú cancelas cuando quieras en Mercado Pago.
+        Las estrellas abren temporadas. El pase abre los niveles especiales (GIF y video) de las
+        temporadas que ya liberaste. Lo que ya revelaste se queda en tu galería.
       </p>
 
       {cancelled && (
@@ -115,21 +112,19 @@ export default function SeasonPassScreen() {
       {staticPay && (
         <p className="pass-banner">
           Tras pagar en Mercado Pago, el acceso se activa manualmente (avísanos con tu email de
-          cuenta). Mientras tanto puedes seguir con los niveles free.
+          cuenta). Mientras tanto puedes seguir con los niveles free (fotos).
         </p>
       )}
 
       <ul className="pass-perks">
-        <li>
-          Acceso a {paidLevels} niveles de pago ({FREE_LEVEL_MAX + 1}–{LEVELS_PER_SEASON})
-        </li>
-        <li>Cobro mensual automático vía Mercado Pago</li>
+        <li>Vigencia ~30 días (se renueva con el cobro mensual de Mercado Pago)</li>
+        <li>Jugar y revelar GIF/video de temporadas ya liberadas por ★</li>
+        <li>Los niveles foto siguen gratis · lo revelado queda en tu galería</li>
         <li>
           Cancela cuando quieras en{' '}
           <a href={MP_MANAGE_SUBSCRIPTION_URL} target="_blank" rel="noreferrer">
             Mercado Pago
           </a>
-          ; al cancelar pierdes el acceso de pago
         </li>
       </ul>
 
@@ -162,13 +157,13 @@ export default function SeasonPassScreen() {
       </button>
 
       <p className="pass-fine">
-        Gratis: niveles 1–{FREE_LEVEL_MAX}. Tú eres responsable de desactivar el pago mensual en
-        Mercado Pago.
+        Al vencer el periodo no podrás revelar especiales nuevos; tu colección sigue visible. Tú
+        cancelas en Mercado Pago.
         {staticPay ? ' Activación: manual tras el pago.' : ''}
       </p>
 
       <Link className="pass-link" to="/levels">
-        Seguir con niveles free
+        Seguir jugando gratis
       </Link>
     </main>
   );
