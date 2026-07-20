@@ -355,3 +355,28 @@ body::after {
     display: flex;
   }
 }
+
+/* Anti-copia suave (web; no es DRM). */
+.content-shield {
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.content-shield img,
+.content-shield video {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+.content-shield.is-obscured > :not(.content-shield-cover) {
+  filter: brightness(0);
+}
+
+.content-shield-cover {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: #0a0c14;
+}

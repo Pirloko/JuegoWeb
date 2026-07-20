@@ -162,7 +162,7 @@ export default function LevelsScreen() {
   const total = Math.max(items.length, 1);
   const progress = seasonProgress(completedCount, total);
   const pricing = season ? seasonPricing(season) : null;
-  const specialCount = items.filter((i) => i.level.media_type !== 'image').length;
+  const specialCount = items.filter((i) => i.level.requires_pass).length;
   const showPassBanner = Boolean(season && !owned && specialCount > 0);
   const refillLabel = energy
     ? formatRefillCountdown(energy.nextRefillAt, nowTick)
@@ -285,7 +285,7 @@ export default function LevelsScreen() {
           <span className="levels-pass-left">
             <CrownIcon />
             <span>
-              Pase: GIF y video de temporadas liberadas
+              Pase: niveles premium de temporadas liberadas
               {' · '}
               {pricing.onOffer && <s className="levels-pass-list">{formatClp(pricing.listClp)}</s>}{' '}
               {formatClp(pricing.effectiveClp)}/mes
@@ -370,7 +370,7 @@ export default function LevelsScreen() {
                       : upcoming
                         ? `${level.name}: próximamente${level.available_at ? ` ${formatAvailableAt(level.available_at)}` : ''}`
                         : gated
-                          ? `${level.name}: requiere pase (GIF/video)`
+                          ? `${level.name}: requiere membresía`
                           : playable
                             ? `Jugar ${level.name}`
                             : `${level.name}, bloqueado. Completa el anterior.`

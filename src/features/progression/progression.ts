@@ -22,7 +22,8 @@ export type LevelMediaKind = 'image' | 'gif' | 'video';
 
 /** Nivel mínimo para calcular ★ de temporada / anti soft-lock. */
 export interface SeasonStarLevelInput {
-  mediaType: LevelMediaKind;
+  /** True = premium (pase). Independiente del media. */
+  requiresPass: boolean;
   /** Mejor % del jugador; null = no completado / sin intento válido. */
   bestPct: number | null;
   targetPct: number;
@@ -86,8 +87,13 @@ export function starsForLevel(bestPct: number | null, targetPct: number): 0 | 1 
   return 0;
 }
 
+/** @deprecated Usar `requiresPass` en SeasonStarLevelInput. */
 export function isSpecialMedia(mediaType: LevelMediaKind): boolean {
   return mediaType === 'gif' || mediaType === 'video';
+}
+
+export function levelIsPremium(requiresPass: boolean): boolean {
+  return Boolean(requiresPass);
 }
 
 /**
@@ -107,17 +113,17 @@ export function defaultStarsRequiredToUnlockNext(seasonIndex: number): number {
   return Math.min(raw, STARS_REQUIRED_CAP);
 }
 
-/** Techo de ★ obtenibles solo con niveles imagen (sin pase). */
-export function freeStarCap(levels: ReadonlyArray<{ mediaType: LevelMediaKind }>): number {
-  return levels.reduce((sum, l) => sum + (isSpecialMedia(l.mediaType) ? 0 : 3), 0);
+/** Techo de ★ obtenibles solo con niveles free (sin pase). */
+export function freeStarCap(levels: ReadonlyArray<{ requiresPass: boolean }>): number {
+  return levels.reduce((sum, l) => sum + (l.requiresPass ? 0 : 3), 0);
 }
 
 /**
- * True si el gate free es alcanzable: required ≤ 3 × |niveles imagen|.
- * Si no hay niveles imagen, solo es válido required === 0.
+ * True si el gate free es alcanzable: required ≤ 3 × |niveles free|.
+ * Si no hay niveles free, solo es válido required === 0.
  */
 export function isSeasonStarGateValid(
-  levels: ReadonlyArray<{ mediaType: LevelMediaKind }>,
+  levels: ReadonlyArray<{ requiresPass: boolean }>,
   starsRequiredToUnlockNext: number,
 ): boolean {
   if (starsRequiredToUnlockNext < 0) return false;
@@ -128,14 +134,14 @@ export function isSeasonStarGateValid(
 
 /**
  * ★ que cuentan para liberar la siguiente temporada.
- * - Imagen: siempre (0–3 según bestPct).
- * - GIF/video: solo si ya hay progreso (completado con derecho a jugarlo);
+ * - Free: siempre (0–3 según bestPct).
+ * - Premium: solo si ya hay progreso (completado con derecho a jugarlo);
  *   sin bestPct aportan 0 (free no queda bloqueado).
  */
 export function countableStarsTowardSeasonGate(levels: ReadonlyArray<SeasonStarLevelInput>): number {
   return levels.reduce((sum, l) => {
     const stars = starsForLevel(l.bestPct, l.targetPct);
-    if (isSpecialMedia(l.mediaType) && l.bestPct == null) return sum;
+    if (l.requiresPass && l.bestPct == null) return sum;
     return sum + stars;
   }, 0);
 }

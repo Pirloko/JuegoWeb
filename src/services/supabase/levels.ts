@@ -1,7 +1,7 @@
 import { getSupabase } from '@/services/supabase/client';
 import {
   createSignedImageUrl,
-  localLevelImageUrl,
+  LOCKED_LEVEL_PLACEHOLDER,
   resolveLevelImageUrl,
   resolvePlayableLevelImageUrl,
 } from '@/services/supabase/storage';
@@ -16,6 +16,11 @@ import type {
 } from '@/types/database';
 import { levelRequiresPass, toLevelConfig } from '@/types/database';
 import type { LevelConfig } from '@/types/level';
+
+/** En lista/galería: solo completed descarga bytes reales (anti-spoiler DevTools). */
+function canFetchLevelImage(status: ProgressStatus): boolean {
+  return status === 'completed';
+}
 
 export async function fetchLevelsWithProgress(seasonId: string): Promise<LevelListItem[]> {
   const supabase = getSupabase();
@@ -41,18 +46,19 @@ export async function fetchLevelsWithProgress(seasonId: string): Promise<LevelLi
   return Promise.all(
     rows.map(async (level) => {
       const p = byLevel.get(level.id);
-      const special = levelRequiresPass(level.media_type);
+      const special = levelRequiresPass(level.requires_pass);
       const needsPass = special && !owned;
       let status: ProgressStatus = p?.status ?? 'locked';
-      // Especial sin pase: visible como gated (salvo ya revelado)
       if (needsPass && status !== 'completed') {
         status = 'gated';
       }
-      // Goteo: aún no salió (prioridad sobre unlocked/gated/locked)
       if (!isLevelReleased(level.available_at) && status !== 'completed') {
         status = 'upcoming';
       }
-      const thumbUrl = await resolveLevelImageUrl(level.thumb_path, level.sort_order);
+      // Locked/gated/upcoming: NUNCA firmar thumb (spoiler vía DevTools).
+      const thumbUrl = canFetchLevelImage(status)
+        ? await resolveLevelImageUrl(level.thumb_path, level.sort_order)
+        : LOCKED_LEVEL_PLACEHOLDER;
       return {
         level,
         status,
@@ -86,13 +92,13 @@ export async function fetchPlayableLevel(levelId: string): Promise<{
 
   const row = level as LevelRow;
   const owned = await hasSeasonPass(row.season_id);
-  const needsPass = levelRequiresPass(row.media_type) && !owned;
+  const needsPass = levelRequiresPass(row.requires_pass) && !owned;
   let status: ProgressStatus = (progress as ProgressRow | null)?.status ?? 'locked';
 
   if (!isLevelReleased(row.available_at) && status !== 'completed') {
     return {
       level: row,
-      config: toLevelConfig(row, localLevelImageUrl(row.sort_order)),
+      config: toLevelConfig(row, LOCKED_LEVEL_PLACEHOLDER),
       status: 'upcoming',
       needsPass,
     };
@@ -102,7 +108,7 @@ export async function fetchPlayableLevel(levelId: string): Promise<{
   if (needsPass) {
     return {
       level: row,
-      config: toLevelConfig(row, localLevelImageUrl(row.sort_order)),
+      config: toLevelConfig(row, LOCKED_LEVEL_PLACEHOLDER),
       status: status === 'completed' ? 'completed' : 'gated',
       needsPass: true,
     };
@@ -111,7 +117,7 @@ export async function fetchPlayableLevel(levelId: string): Promise<{
   if (status === 'locked') {
     return {
       level: row,
-      config: toLevelConfig(row, localLevelImageUrl(row.sort_order)),
+      config: toLevelConfig(row, LOCKED_LEVEL_PLACEHOLDER),
       status,
       needsPass: false,
     };
@@ -140,8 +146,10 @@ export async function fetchGallery(seasonId?: string): Promise<GalleryItem[]> {
   return Promise.all(
     items.map(async ({ level, status }) => {
       const revealed = status === 'completed';
-      const path = revealed ? level.image_path : level.thumb_path;
-      const displayUrl = await resolveLevelImageUrl(path, level.sort_order);
+      // Sin revelar: placeholder (no firmar thumb → no spoiler en DevTools).
+      const displayUrl = revealed
+        ? await resolveLevelImageUrl(level.image_path, level.sort_order)
+        : LOCKED_LEVEL_PLACEHOLDER;
       const mediaUrl =
         revealed && level.media_type !== 'image' && level.media_path
           ? await createSignedImageUrl(level.media_path)

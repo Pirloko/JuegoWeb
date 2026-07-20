@@ -60,7 +60,7 @@ export interface HeartConfig {
   type: 'heart';
   spawn: PowerUpSpawnConfig;
   params: {
-    /** Vidas que suma (normalmente 1). */
+    /** Corazones que suma al pool de energía (normalmente 1; cap energy_max). */
     lives: number;
   };
 }

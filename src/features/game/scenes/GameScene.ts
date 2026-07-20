@@ -148,7 +148,7 @@ export class GameScene extends Phaser.Scene {
       grantShield: (durationMs) => this.grantShield(durationMs),
       freezeEnemies: (durationMs) => this.freezeEnemies(durationMs),
       boostSpeed: (multiplier, durationMs) => this.boostSpeed(multiplier, durationMs),
-      addLives: (amount) => this.addLives(amount),
+      grantEnergyHearts: (amount) => this.grantEnergyHearts(amount),
       addTime: (addSec) => this.addTime(addSec),
     };
   }
@@ -169,20 +169,22 @@ export class GameScene extends Phaser.Scene {
     this.player.setFillStyle(0xfde68a);
   }
 
-  /** Legacy power-up corazón: ya no hay vidas in-match → da tiempo. */
-  private addLives(amount: number): void {
-    this.addTime(Math.max(1, amount) * 15);
+  /** Power-up corazón → React aplica RPC grant_energy_hearts. */
+  private grantEnergyHearts(amount: number): void {
+    const n = Number.isFinite(amount) && amount >= 1 ? Math.floor(amount) : 1;
+    gameEvents.emit('game:energy-gained', { amount: n });
   }
 
   private addTime(addSec: number): void {
-    if (this.deadlineMs <= 0 || addSec <= 0) return;
+    if (this.deadlineMs <= 0) return;
+    if (!Number.isFinite(addSec) || addSec <= 0) return;
     this.deadlineMs += addSec * 1000;
     this.lastEmittedRemainSec = -1;
     this.emitTime(this.time.now);
   }
 
   private tickTimer(time: number): void {
-    if (this.deadlineMs <= 0) return;
+    if (this.deadlineMs <= 0 || !Number.isFinite(this.deadlineMs)) return;
     this.emitTime(time);
     if (time >= this.deadlineMs) {
       this.finish(false);
@@ -190,11 +192,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private emitTime(time: number): void {
-    if (this.deadlineMs <= 0) {
+    if (this.deadlineMs <= 0 || !Number.isFinite(this.deadlineMs)) {
       gameEvents.emit('game:time', { remainingMs: 0, limited: false });
       return;
     }
     const remainingMs = Math.max(0, Math.round(this.deadlineMs - time));
+    if (!Number.isFinite(remainingMs)) return;
     const remainSec = Math.ceil(remainingMs / 1000);
     if (remainSec === this.lastEmittedRemainSec) return;
     this.lastEmittedRemainSec = remainSec;

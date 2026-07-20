@@ -5,7 +5,14 @@ import { completeLevel, fetchNextPlayableLevelId, fetchPlayableLevel } from '@/s
 import { awardBadges } from '@/services/supabase/badges';
 import { createSignedImageUrl } from '@/services/supabase/storage';
 import { endGameSession } from '@/services/supabase/gameSessions';
-import { beginLevelAttempt, fetchUserEnergy, formatRefillCountdown, ENERGY_PACK_PRICE_CLP, startEnergyPackCheckout } from '@/services/supabase/energy';
+import {
+  beginLevelAttempt,
+  fetchUserEnergy,
+  formatRefillCountdown,
+  grantEnergyHearts,
+  ENERGY_PACK_PRICE_CLP,
+  startEnergyPackCheckout,
+} from '@/services/supabase/energy';
 import { formatClp } from '@/types/database';
 import { BADGE_CATALOG, type BadgeId } from '@/features/progression/badgeCatalog';
 import { formatAvailableAt } from '@/features/progression/progression';
@@ -69,6 +76,8 @@ export default function GameScreen() {
 
   const savedRef = useRef(false);
   const hadFullscreenRef = useRef(fullscreenService.isActive());
+  /** Evita el modal de FS al pasar al siguiente nivel sin salir de fullscreen. */
+  const skipFsPromptRef = useRef(false);
   const sessionIdRef = useRef<string | null>(null);
   const sessionStartedAtRef = useRef<number>(0);
   const sessionClosedRef = useRef(false);
@@ -88,6 +97,7 @@ export default function GameScreen() {
     void (async () => {
       setLoading(true);
       setLoadError(null);
+      setNeedsFsReentry(false);
       try {
         const data = await fetchPlayableLevel(levelId);
         if (cancelled) return;
@@ -243,6 +253,18 @@ export default function GameScreen() {
       gameEvents.on('game:time', ({ remainingMs: ms, limited }) => {
         setRemainingMs(limited ? ms : null);
       }),
+      gameEvents.on('game:energy-gained', ({ amount }) => {
+        if (energyWaived) return;
+        void grantEnergyHearts(amount)
+          .then((energy) => {
+            setEnergyHearts(energy.hearts);
+            setEnergyMax(energy.max);
+            setNextRefillLabel(formatRefillCountdown(energy.nextRefillAt));
+          })
+          .catch(() => {
+            /* HUD se sincroniza al cerrar sesión */
+          });
+      }),
       gameEvents.on('game:completed', (stats) => {
         closeSession('completed', stats.timeMs);
         setResult({
@@ -271,15 +293,21 @@ export default function GameScreen() {
       }),
     ];
     return () => unsubscribes.forEach((off) => off());
-  }, [config, levelId, runId]);
+  }, [config, levelId, runId, energyWaived]);
 
   useEffect(() => {
     return fullscreenService.onChange((active) => {
       setFsActive(active);
       if (active) {
         hadFullscreenRef.current = true;
+        skipFsPromptRef.current = false;
         setNeedsFsReentry(false);
         gameEvents.emit('game:resume', {});
+        return;
+      }
+      // Transición intencional (siguiente nivel): no pedir reingreso.
+      if (skipFsPromptRef.current) {
+        skipFsPromptRef.current = false;
         return;
       }
       // Salió de fullscreen tras haber estado dentro → pausar y ofrecer reingreso.
@@ -356,9 +384,11 @@ export default function GameScreen() {
     setResult((r) => (r ? { ...r, revealed: true } : r));
   }
 
-  async function goNextLevel() {
+  function goNextLevel() {
     if (!result?.nextLevelId) return;
-    await fullscreenService.exit();
+    // Mantener pantalla completa: no salir (evita el modal de reingreso).
+    skipFsPromptRef.current = true;
+    setNeedsFsReentry(false);
     navigate(`/play/${result.nextLevelId}`);
   }
 

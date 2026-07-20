@@ -466,8 +466,9 @@
 }
 
 .profile-row-icon.logout {
-  color: #fecaca;
-  background: linear-gradient(145deg, rgba(248, 113, 113, 0.3), rgba(153, 27, 27, 0.35));
+  color: #c5cae0;
+  background: linear-gradient(145deg, rgba(107, 114, 148, 0.35), rgba(42, 49, 80, 0.55));
+  box-shadow: none;
 }
 
 .profile-row-icon.delete {
@@ -505,12 +506,39 @@
     color 0.18s ease;
 }
 
-.profile-row.danger .profile-row-text strong {
-  color: #f87171;
+.profile-danger-zone {
+  margin-top: 8px;
+  padding: 16px 8px 4px;
+  border-top: 1px solid rgba(42, 49, 80, 0.85);
+  text-align: center;
 }
 
-.profile-row.danger {
-  border-color: rgba(248, 113, 113, 0.35);
+.profile-delete-link {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(148, 163, 184, 0.45);
+  cursor: pointer;
+}
+
+.profile-delete-link:hover,
+.profile-delete-link:focus-visible {
+  color: #f87171;
+  text-decoration-color: rgba(248, 113, 113, 0.55);
+}
+
+.profile-danger-hint {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #6b7394;
 }
 
 .profile-delete-overlay {

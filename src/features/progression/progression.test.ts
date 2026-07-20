@@ -130,17 +130,17 @@ describe('defaultStarsRequiredToUnlockNext', () => {
 
 describe('freeStarCap + isSeasonStarGateValid', () => {
   const tenLevelsThreeSpecial = [
-    ...Array.from({ length: 7 }, () => ({ mediaType: 'image' as const })),
-    { mediaType: 'gif' as const },
-    { mediaType: 'video' as const },
-    { mediaType: 'image' as const },
+    ...Array.from({ length: 7 }, () => ({ requiresPass: false })),
+    { requiresPass: true },
+    { requiresPass: true },
+    { requiresPass: false },
   ];
 
-  it('cap free = 3 × niveles imagen', () => {
-    expect(freeStarCap(tenLevelsThreeSpecial)).toBe(24); // 8 imagen × 3
+  it('cap free = 3 × niveles free', () => {
+    expect(freeStarCap(tenLevelsThreeSpecial)).toBe(24); // 8 free × 3
   });
 
-  it('gate 20★ es válido con 8 niveles imagen', () => {
+  it('gate 20★ es válido con 8 niveles free', () => {
     expect(isSeasonStarGateValid(tenLevelsThreeSpecial, 20)).toBe(true);
   });
 
@@ -148,46 +148,50 @@ describe('freeStarCap + isSeasonStarGateValid', () => {
     expect(isSeasonStarGateValid(tenLevelsThreeSpecial, 25)).toBe(false);
   });
 
-  it('solo especiales: solo required 0 es válido', () => {
-    const onlySpecial = [{ mediaType: 'gif' as const }, { mediaType: 'video' as const }];
+  it('solo premium: solo required 0 es válido', () => {
+    const onlySpecial = [{ requiresPass: true }, { requiresPass: true }];
     expect(freeStarCap(onlySpecial)).toBe(0);
     expect(isSeasonStarGateValid(onlySpecial, 0)).toBe(true);
     expect(isSeasonStarGateValid(onlySpecial, 1)).toBe(false);
+  });
+
+  it('GIF free cuenta en el cap', () => {
+    expect(freeStarCap([{ requiresPass: false }, { requiresPass: false }])).toBe(6);
   });
 });
 
 describe('countableStarsTowardSeasonGate', () => {
   const target = 60;
 
-  it('free alcanza 20★ solo con imagen; especiales sin completar no cuentan', () => {
+  it('free alcanza 20★; premium sin completar no cuenta', () => {
     const levels = [
       ...Array.from({ length: 7 }, () => ({
-        mediaType: 'image' as const,
+        requiresPass: false,
         bestPct: 95,
         targetPct: target,
       })),
-      { mediaType: 'gif' as const, bestPct: null, targetPct: target },
-      { mediaType: 'video' as const, bestPct: null, targetPct: target },
-      { mediaType: 'image' as const, bestPct: 95, targetPct: target },
+      { requiresPass: true, bestPct: null, targetPct: target },
+      { requiresPass: true, bestPct: null, targetPct: target },
+      { requiresPass: false, bestPct: 95, targetPct: target },
     ];
-    // 8 imagen × 3★ = 24
+    // 8 free × 3★ = 24
     expect(countableStarsTowardSeasonGate(levels)).toBe(24);
     expect(isSeasonStarGateMet(levels, 20)).toBe(true);
   });
 
-  it('especial no jugado aporta 0 aunque el gate sea alto', () => {
+  it('premium no jugado aporta 0 aunque el gate sea alto', () => {
     const levels = [
-      { mediaType: 'image' as const, bestPct: 60, targetPct: target },
-      { mediaType: 'gif' as const, bestPct: null, targetPct: target },
+      { requiresPass: false, bestPct: 60, targetPct: target },
+      { requiresPass: true, bestPct: null, targetPct: target },
     ];
     expect(countableStarsTowardSeasonGate(levels)).toBe(1);
     expect(isSeasonStarGateMet(levels, 20)).toBe(false);
   });
 
-  it('especial completado sí suma ★ (bonus premium)', () => {
+  it('premium completado sí suma ★ (bonus)', () => {
     const levels = [
-      { mediaType: 'image' as const, bestPct: 60, targetPct: target },
-      { mediaType: 'gif' as const, bestPct: 95, targetPct: target },
+      { requiresPass: false, bestPct: 60, targetPct: target },
+      { requiresPass: true, bestPct: 95, targetPct: target },
     ];
     expect(countableStarsTowardSeasonGate(levels)).toBe(1 + 3);
   });

@@ -19,6 +19,8 @@ export interface GameEventMap {
   'game:failed': LevelResultStats;
   /** React → Phaser: celebrar / revelar imagen tras victoria */
   'game:reveal': Record<string, never>;
+  /** Phaser → React: power-up corazón sumó al pool de energía */
+  'game:energy-gained': { amount: number };
 }
 
 type Handler<T> = (payload: T) => void;

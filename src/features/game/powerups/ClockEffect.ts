@@ -5,7 +5,8 @@ import type { PowerUpContext, PowerUpEffect } from './PowerUpEffect';
 /** Reloj: suma segundos al cronómetro del nivel (params.addSec). */
 export class ClockEffect implements PowerUpEffect<ClockConfig> {
   apply(ctx: PowerUpContext, config: ClockConfig): void {
-    const addSec = Math.max(1, Math.floor(config.params.addSec));
+    const raw = Number(config.params?.addSec);
+    const addSec = Number.isFinite(raw) && raw >= 1 ? Math.floor(raw) : 15;
     ctx.addTime(addSec);
     const x = (ctx.cell.col + 0.5) * CELL;
     const y = (ctx.cell.row + 0.5) * CELL;

@@ -146,6 +146,21 @@ export async function prepareLevelImage(
   if (!ctx) throw new Error('Canvas no disponible');
   ctx.drawImage(img, 0, 0, width, height);
 
+  // Thumb: blur fuerte + viñeta para que no sirva como spoiler en DevTools/caché.
+  if (kind === 'thumb') {
+    const tmp = document.createElement('canvas');
+    tmp.width = width;
+    tmp.height = height;
+    const tctx = tmp.getContext('2d');
+    if (!tctx) throw new Error('Canvas no disponible');
+    tctx.filter = 'blur(18px) saturate(0.7) brightness(0.55)';
+    tctx.drawImage(canvas, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(tmp, 0, 0);
+    ctx.fillStyle = 'rgba(8, 11, 22, 0.35)';
+    ctx.fillRect(0, 0, width, height);
+  }
+
   const encoded = await encodeUnderLimit(canvas, LEVEL_IMAGE_MAX_BYTES);
 
   return {

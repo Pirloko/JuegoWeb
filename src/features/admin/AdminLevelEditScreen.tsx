@@ -140,6 +140,7 @@ export default function AdminLevelEditScreen() {
   const [existingImagePath, setExistingImagePath] = useState<string | null>(null);
   const [existingThumbPath, setExistingThumbPath] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<LevelMediaType>('image');
+  const [requiresPass, setRequiresPass] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [existingMediaPath, setExistingMediaPath] = useState<string | null>(null);
   const [sourceUrl, setSourceUrl] = useState('');
@@ -200,6 +201,7 @@ export default function AdminLevelEditScreen() {
         setExistingImagePath(row.image_path);
         setExistingThumbPath(row.thumb_path);
         setMediaType(row.media_type ?? 'image');
+        setRequiresPass(Boolean(row.requires_pass));
         setExistingMediaPath(row.media_path ?? null);
         setSourceUrl(row.source_url ?? '');
         setConfig({ ...defaultLevelConfig(), ...row.config });
@@ -296,6 +298,7 @@ export default function AdminLevelEditScreen() {
         media_path: mediaPath,
         source_url: sourceUrl.trim() || null,
         available_at: localInputToIso(availableAtLocal),
+        requires_pass: requiresPass,
       };
 
       setInfo('Guardando nivel…');
@@ -548,6 +551,20 @@ export default function AdminLevelEditScreen() {
               </button>
             ))}
           </div>
+
+          <label className="admin-check admin-check--card">
+            <input
+              type="checkbox"
+              checked={requiresPass}
+              onChange={(e) => setRequiresPass(e.target.checked)}
+            />
+            <span>
+              Requiere membresía (pase)
+              <small className="admin-check-sub">
+                Si está apagado, el nivel es gratis aunque tenga GIF o video
+              </small>
+            </span>
+          </label>
 
           {mediaType !== 'image' && (
             <>

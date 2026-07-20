@@ -323,7 +323,7 @@ export default function ProfileScreen() {
 
         <button
           type="button"
-          className="profile-row danger"
+          className="profile-row"
           onClick={() => void signOut().then(() => navigate('/'))}
         >
           <span className="profile-row-icon logout">
@@ -337,35 +337,29 @@ export default function ProfileScreen() {
             ›
           </span>
         </button>
-
-        {!admin && (
-          <button
-            type="button"
-            className="profile-row danger"
-            onClick={() => {
-              setConfirmDelete(true);
-              setDeleteText('');
-              setDeleteError(null);
-            }}
-          >
-            <span className="profile-row-icon delete">
-              <RowIcon kind="delete" />
-            </span>
-            <span className="profile-row-text">
-              <strong>Eliminar cuenta</strong>
-              <small>Borra tu perfil y progreso para siempre</small>
-            </span>
-            <span className="profile-row-chevron" aria-hidden>
-              ›
-            </span>
-          </button>
-        )}
       </nav>
 
       <nav className="profile-legal-links" aria-label="Legal">
         <Link to="/legal/terminos">Condiciones de uso</Link>
         <Link to="/legal/privacidad">Política de privacidad</Link>
       </nav>
+
+      {!admin && (
+        <div className="profile-danger-zone">
+          <button
+            type="button"
+            className="profile-delete-link"
+            onClick={() => {
+              setConfirmDelete(true);
+              setDeleteText('');
+              setDeleteError(null);
+            }}
+          >
+            Eliminar cuenta
+          </button>
+          <p className="profile-danger-hint">Borra perfil y progreso para siempre. No se puede deshacer.</p>
+        </div>
+      )}
 
       {confirmDelete && (
         <div className="profile-delete-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-title">

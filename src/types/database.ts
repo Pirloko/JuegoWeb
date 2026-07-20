@@ -50,8 +50,13 @@ export const MP_MANAGE_SUBSCRIPTION_URL = 'https://www.mercadopago.cl/subscripti
 /** Tipo del contenido oculto de un nivel. */
 export type LevelMediaType = 'image' | 'gif' | 'video';
 
-/** True si el nivel exige pase (GIF/video). */
-export function levelRequiresPass(mediaType: LevelMediaType | string | null | undefined): boolean {
+/** True si el nivel exige pase (flag admin; independiente de image/gif/video). */
+export function levelRequiresPass(requiresPass: boolean | null | undefined): boolean {
+  return Boolean(requiresPass);
+}
+
+/** @deprecated Preferir `levelRequiresPass(level.requires_pass)`. */
+export function mediaLooksSpecial(mediaType: LevelMediaType | string | null | undefined): boolean {
   return mediaType === 'gif' || mediaType === 'video';
 }
 
@@ -73,6 +78,8 @@ export interface LevelRow {
   is_active: boolean;
   /** Si no null, goteo: no jugable hasta esa fecha ISO. */
   available_at: string | null;
+  /** True = exige pase/membresía (admin). Independiente del media. */
+  requires_pass: boolean;
 }
 
 export interface LevelConfigJson {
@@ -105,7 +112,7 @@ export interface LevelListItem {
   bestPct: number | null;
   bestTimeMs: number | null;
   attempts: number;
-  /** true si es GIF/video y el jugador no tiene pase (salvo ya completed). */
+  /** true si requires_pass y el jugador no tiene pase (salvo ya completed). */
   needsPass: boolean;
   /** Thumb firmada para fondo del tile (teaser difuminado). */
   thumbUrl: string;

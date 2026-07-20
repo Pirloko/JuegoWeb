@@ -125,6 +125,8 @@ export interface LevelWriteInput {
   source_url: string | null;
   /** ISO o null = disponible ya. */
   available_at: string | null;
+  /** Exige pase (independiente del media). */
+  requires_pass: boolean;
 }
 
 export async function createLevel(input: LevelWriteInput): Promise<LevelRow> {

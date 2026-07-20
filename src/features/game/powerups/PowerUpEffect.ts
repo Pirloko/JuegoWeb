@@ -22,8 +22,8 @@ export interface PowerUpContext {
   freezeEnemies(durationMs: number): void;
   /** Multiplicador temporal de velocidad del jugador. */
   boostSpeed(multiplier: number, durationMs: number): void;
-  /** Suma vidas (emite actualización al HUD). */
-  addLives(amount: number): void;
+  /** Suma corazones al pool de energía del jugador (máx 5). Async vía React/RPC. */
+  grantEnergyHearts(amount: number): void;
   /** Suma segundos al cronómetro del nivel (si hay límite activo). */
   addTime(addSec: number): void;
 }

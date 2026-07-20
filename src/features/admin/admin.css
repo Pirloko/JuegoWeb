@@ -513,6 +513,14 @@
   width: 100%;
 }
 
+.admin-check-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted, #8b93b5);
+}
+
 .admin-power-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

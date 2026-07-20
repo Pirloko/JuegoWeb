@@ -29,7 +29,7 @@ src/features/game/powerups/
 - `PowerUpSystem` (systems/): spawn por config y recogida; agnóstico al tipo.
 - `PowerUpContext`: lo único que un efecto conoce de la escena — `territory`,
   `cell`, `getEnemies()`, `killEnemy()`, `conquer(cells)`, `grantShield`,
-  `freezeEnemies`, `boostSpeed`, `addLives`, `addTime` y `scene` para FX.
+  `freezeEnemies`, `boostSpeed`, `grantEnergyHearts`, `addTime` y `scene` para FX.
 - El registro es un mapped type sobre `PowerUpConfig['type']`: declarar un
   tipo nuevo en el union sin registrar su efecto **no compila**.
 - Añadir un power-up = clase de efecto + entrada en el registro + config
@@ -70,7 +70,7 @@ Detalles (decisiones tomadas en la FASE 5):
 | Escudo | Invulnerabilidad del cuerpo N ms; **el trail sigue letal** | ✓ |
 | Congelación | Pausa enemigos N ms | ✓ |
 | Velocidad | Multiplicador de velocidad del jugador (cap 1.6×) | ✓ |
-| Corazón | Suma vidas (`params.lives`) | ✓ |
+| Corazón | +N al pool de energía (`params.lives`, máx 5); emite `game:energy-gained` → RPC `grant_energy_hearts` | ✓ |
 | Reloj | Suma segundos al cronómetro (`params.addSec`) | ✓ |
 | Imán | Atrae power-ups cercanos | Pendiente |
 | Fuego | Zona de daño temporal | Pendiente |

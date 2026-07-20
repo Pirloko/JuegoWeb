@@ -1,12 +1,18 @@
 import { getSupabase } from '@/services/supabase/client';
 
 const BUCKET = 'level-images';
-const SIGNED_TTL_SEC = 60 * 60;
+/** URLs cortas: menos ventana si alguien copia el link. */
+const SIGNED_TTL_SEC = 15 * 60;
+/** Placeholder sin contenido real (nunca fotos de niveles). */
+export const LOCKED_LEVEL_PLACEHOLDER = '/icons/level-locked.svg';
 
-export async function createSignedImageUrl(path: string): Promise<string | null> {
+export async function createSignedImageUrl(
+  path: string,
+  ttlSec: number = SIGNED_TTL_SEC,
+): Promise<string | null> {
   const { data, error } = await getSupabase().storage
     .from(BUCKET)
-    .createSignedUrl(path, SIGNED_TTL_SEC);
+    .createSignedUrl(path, ttlSec);
 
   if (error || !data?.signedUrl) {
     if (error) console.warn('[storage] signedUrl', path, error.message);
@@ -15,8 +21,12 @@ export async function createSignedImageUrl(path: string): Promise<string | null>
   return data.signedUrl;
 }
 
+/** Solo en DEV: assets locales de prueba. En prod no hay fallback con fotos. */
 export function localLevelImageUrl(sortOrder: number): string {
-  return `/levels/level-${sortOrder}.png`;
+  if (import.meta.env.DEV) {
+    return `/levels/level-${sortOrder}.png`;
+  }
+  return LOCKED_LEVEL_PLACEHOLDER;
 }
 
 function candidatePaths(imagePath: string, sortOrder: number): string[] {
@@ -36,8 +46,7 @@ function candidatePaths(imagePath: string, sortOrder: number): string[] {
 }
 
 /**
- * URL para <img> / CSS (signed URL o fallback local).
- * Nunca string vacío.
+ * URL para <img> (signed). Sin fallback a fotos públicas en producción.
  */
 export async function resolveLevelImageUrl(
   imagePath: string,
@@ -48,14 +57,18 @@ export async function resolveLevelImageUrl(
     if (signed) return signed;
   }
 
-  const local = localLevelImageUrl(sortOrder);
-  console.warn(`[storage] Usando fallback local para ${imagePath} → ${local}`);
-  return local;
+  if (import.meta.env.DEV) {
+    const local = localLevelImageUrl(sortOrder);
+    console.warn(`[storage] DEV fallback ${imagePath} → ${local}`);
+    return local;
+  }
+
+  console.warn(`[storage] Sin acceso a ${imagePath} (¿locked / RLS?)`);
+  return LOCKED_LEVEL_PLACEHOLDER;
 }
 
 /**
- * URL para Phaser: descarga el archivo y usa blob: (evita CORS del canvas).
- * Si Storage falla → imagen local. Nunca string vacío.
+ * URL blob: para Phaser. Sin fallback a fotos públicas en producción.
  */
 export async function resolvePlayableLevelImageUrl(
   imagePath: string,
@@ -79,10 +92,12 @@ export async function resolvePlayableLevelImageUrl(
     }
   }
 
-  const local = localLevelImageUrl(sortOrder);
-  console.warn(
-    `[storage] Jugador sin acceso a imagen de nivel (¿RLS?). Fallback ${local}. Detalle:`,
-    errors.join(' | ') || 'sin candidatos',
-  );
-  return local;
+  if (import.meta.env.DEV) {
+    const local = localLevelImageUrl(sortOrder);
+    console.warn(`[storage] DEV playable fallback ${local}`, errors.join(' | '));
+    return local;
+  }
+
+  console.warn('[storage] Sin acceso a imagen de partida', errors.join(' | '));
+  return LOCKED_LEVEL_PLACEHOLDER;
 }

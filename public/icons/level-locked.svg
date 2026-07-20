@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="640" viewBox="0 0 360 640" role="img" aria-label="Nivel bloqueado">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#12162a"/>
+      <stop offset="100%" stop-color="#1a1030"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="640" fill="url(#g)"/>
+  <rect x="24" y="24" width="312" height="592" rx="28" fill="#0c0f1c" stroke="#2a3150" stroke-width="2"/>
+  <circle cx="180" cy="280" r="42" fill="none" stroke="#5b647f" stroke-width="4"/>
+  <rect x="152" y="292" width="56" height="40" rx="8" fill="#5b647f"/>
+  <path d="M162 292 v-14 a18 18 0 0 1 36 0 v14" fill="none" stroke="#5b647f" stroke-width="4" stroke-linecap="round"/>
+  <text x="180" y="380" text-anchor="middle" fill="#8b93b5" font-family="system-ui,sans-serif" font-size="18" font-weight="600">Bloqueado</text>
+</svg>

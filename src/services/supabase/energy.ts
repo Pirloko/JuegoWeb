@@ -32,6 +32,17 @@ export async function fetchUserEnergy(): Promise<EnergyStatus> {
   return parseEnergy(data);
 }
 
+/** Power-up corazón in-match: +N al pool (cap energy_max). */
+export async function grantEnergyHearts(amount = 1): Promise<EnergyStatus & { gained: number }> {
+  const { data, error } = await getSupabase().rpc('grant_energy_hearts', {
+    p_amount: Math.max(1, Math.floor(amount)),
+  });
+  if (error) throw new Error(error.message);
+  const parsed = parseEnergy(data);
+  const o = (data ?? {}) as Record<string, unknown>;
+  return { ...parsed, gained: Number(o.gained) || 0 };
+}
+
 /** Abre game_session. Exige ≥1 corazón (salvo pase) pero no gasta. */
 export async function beginLevelAttempt(levelId: string): Promise<EnergyStatus> {
   const { data, error } = await getSupabase().rpc('begin_level_attempt', {

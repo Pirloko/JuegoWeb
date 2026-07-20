@@ -122,6 +122,11 @@ Ver plan y decisiones en `docs/GAMIFICACION_PLAN.md`.
   recomputa todo desde `user_level_progress` y devuelve solo las medallas
   nuevas (React la llama tras `complete_level`). La regla de 3★ está
   replicada en `starsForLevel` (TS) y en la RPC (comentario cruzado).
+- `levels.requires_pass` (00033) — paywall por flag admin (no por media_type).
+  Backfill: gif/video existentes → `true`. GIF/video free permitidos.
+- `level_requires_pass(boolean)` + RPCs (`begin_level_attempt`, `complete_level`,
+  unlock chain) usan `requires_pass`.
+- `season_star_cap_free` = 3 × niveles con `requires_pass = false`.
 - `levels.media_type` (`image|gif|video`) + `levels.media_path` (00016) —
   contenido oculto especial (video/GIF ≤ 20 s, ≤ 12 MB; el bucket acepta
   `image/gif`, `video/mp4`, `video/webm`). Phaser sigue revelando el poster
@@ -138,13 +143,14 @@ Ver plan y decisiones en `docs/GAMIFICACION_PLAN.md`.
   gate "el lector completó el nivel"; no abre la RLS select-own de
   `profiles`). Rate limit por trigger: máx 10 reseñas nuevas/hora.
 
-## Energía (00029–00030)
+## Energía (00029–00035)
 
 - `user_energy` — `hearts` (0–5), `last_refill_at`. Refill +1 cada 20 min.
 - `get_user_energy()` — aplica refill y devuelve snapshot.
 - `begin_level_attempt(level_id)` — exige ≥1 corazón (salvo pase), crea
   `game_sessions`. **No gasta** corazón al empezar.
 - `end_game_session(..., failed)` — resta 1 corazón al fallar (salvo pase).
+- `grant_energy_hearts(p_amount)` (00035) — power-up corazón in-match (+N, cap).
 - `energy_pack_purchases` (00030) — auditoría de packs one-shot ($990 CLP).
 - `grant_energy_pack` — rellena al máximo (admin o webhook MP).
 - Edge `create-energy-checkout` → preference MP; `external_reference`
@@ -157,6 +163,16 @@ Ver plan y decisiones en `docs/GAMIFICACION_PLAN.md`.
 - `level_is_released(available_at)` — helper SQL.
 - `begin_level_attempt` / `complete_level` rechazan si aún no salió.
 - Cliente: status `upcoming`, teaser T+1 (`SEASON_TEASER_DAYS` = 7).
+
+- `can_read_level_image` (00034): thumbs y full solo si
+  `unlocked`/`completed`; `media.*` solo `completed`. Locked = sin bytes.
+- Cliente: lista/galería no firman thumbs de locked; placeholder SVG.
+- Sin fallback a `public/levels/*.png` en producción (eran spoiler).
+- Thumbs nuevas al subir: blur en `prepareLevelImage`.
+- Regenerar thumbs existentes (sin admin): `npm run blur:thumbs`
+  (requiere `SUPABASE_SERVICE_ROLE_KEY` en `.env`). Dry-run: `-- --dry`.
+- Video: `controlsList=nodownload`, sin PiP; `ContentShield` (sin menú /
+  drag; oscurece al ocultar pestaña). **No es DRM absoluto.**
 
 ## Storage
 

@@ -30,9 +30,11 @@ publicidad como pilar.
 
 1. No ads como modelo principal.
 2. Free puede completar la ruta de niveles **imagen** y avanzar temporadas si cumple ★.
-3. Niveles `media_type ∈ {gif, video}` = **especiales**:
-   - Sin pase activo: no jugar / no revelar ese nivel; la ruta free **sigue** (saltar o ver candado premium y continuar al siguiente free).
+3. Niveles con **`requires_pass = true`** (admin) = **premium**:
+   - Sin pase activo: no jugar / no revelar ese nivel; la ruta free **sigue**.
    - Con pase activo **y** temporada liberada por ★: puede jugar y revelar.
+   - El **media** (imagen / GIF / video) es independiente: un nivel gratis puede
+     tener GIF/video.
 4. Al completar un especial con pase válido: galería guarda el media; **permanece reproducible con movimiento** aunque el pase expire.
 5. Centro del cobro = contenido especial, no las vidas.
 
@@ -63,19 +65,19 @@ La temporada 1 está siempre disponible (tras auth / onboarding).
 
 Definiciones por temporada `S`:
 
-- `L_free` = niveles con `media_type = 'image'`
-- `L_special` = niveles con `media_type ∈ {gif, video}`
+- `L_free` = niveles con `requires_pass = false`
+- `L_special` = niveles con `requires_pass = true`
 - `cap_free(S) = 3 × |L_free|`  (máximo de ★ obtenibles sin pase)
 - `stars_required_to_unlock_next(S) ≤ cap_free(S)` **siempre**
 
 **Estrellas que cuentan para el gate** (jugador free o paid):
 
-- Cuentan: ★ de niveles **imagen** completados.
-- ★ de especiales: **solo cuentan si** el jugador los completó (implica que en algún momento tuvo pase / derecho a jugarlos).
-- Sin pase, un especial no jugado aporta **0★** y **no bloquea** el orden de los free.
+- Cuentan: ★ de niveles **free** completados.
+- ★ de premium: **solo cuentan si** el jugador los completó (implica pase).
+- Sin pase, un premium no jugado aporta **0★** y **no bloquea** el orden de los free.
 
 Validación admin/CI: al publicar o editar temporada, rechazar configs donde
-`stars_required_to_unlock_next > 3 × count(image levels)`.
+`stars_required_to_unlock_next > 3 × count(free levels)`.
 
 Premium se presenta como **bonus de colección + ★ extra**, no como peaje
 oculto para no quedar atrapado.

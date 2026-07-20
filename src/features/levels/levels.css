@@ -344,7 +344,8 @@
 }
 
 .level-tile.unlocked .level-tile-bg {
-  filter: blur(5px) brightness(0.78) saturate(1.25);
+  /* Teaser jugable: blur fuerte (el full solo se descarga al entrar a partida). */
+  filter: blur(16px) brightness(0.5) saturate(0.8);
 }
 
 .level-tile.unlocked .level-tile-scrim {
