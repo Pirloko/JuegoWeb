@@ -151,7 +151,7 @@ export default function LevelsScreen() {
     }
     if (item.status === 'upcoming') return;
     if (item.status === 'gated' && season) {
-      navigate(`/pase/${season.id}`);
+      navigate('/pase');
       return;
     }
     const playable = item.status === 'unlocked' || item.status === 'completed';
@@ -280,7 +280,7 @@ export default function LevelsScreen() {
         <button
           type="button"
           className="levels-pass-banner"
-          onClick={() => navigate(`/pase/${season.id}`)}
+          onClick={() => navigate('/pase')}
         >
           <span className="levels-pass-left">
             <CrownIcon />

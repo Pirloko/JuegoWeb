@@ -33,7 +33,11 @@ src/features/game/powerups/
 - El registro es un mapped type sobre `PowerUpConfig['type']`: declarar un
   tipo nuevo en el union sin registrar su efecto **no compila**.
 - Añadir un power-up = clase de efecto + entrada en el registro + config
-  JSON (+ emoji en la entidad PowerUp). Cero cambios en el núcleo.
+  JSON + sprite en `public/game/sprites/` (`POWERUP_SPRITE`). Cero cambios
+  en el núcleo.
+- Visuales: sprites glossy en `public/game/sprites/` (jugador, enemigo,
+  power-ups). El tipo `heart` es un ícono de senos (energía). Regenerar con
+  `npm run sprites:game` si hace falta.
 
 ## Bomba expansiva (el primero, Fase 5)
 
@@ -70,7 +74,7 @@ Detalles (decisiones tomadas en la FASE 5):
 | Escudo | Invulnerabilidad del cuerpo N ms; **el trail sigue letal** | ✓ |
 | Congelación | Pausa enemigos N ms | ✓ |
 | Velocidad | Multiplicador de velocidad del jugador (cap 1.6×) | ✓ |
-| Corazón | +N al pool de energía (`params.lives`, máx 5); emite `game:energy-gained` → RPC `grant_energy_hearts` | ✓ |
+| Corazón (senos) | +N al pool de energía (`params.lives`, máx 5); sprite sensual + RPC `grant_energy_hearts` | ✓ |
 | Reloj | Suma segundos al cronómetro (`params.addSec`) | ✓ |
 | Imán | Atrae power-ups cercanos | Pendiente |
 | Fuego | Zona de daño temporal | Pendiente |

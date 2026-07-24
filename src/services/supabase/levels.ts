@@ -123,6 +123,8 @@ export async function fetchPlayableLevel(levelId: string): Promise<{
     };
   }
 
+  // Partida: full nítida bajo la niebla (la conquista DEBE verse bien).
+  // Anti-spoiler: borde no perfora; locked/gated no firman bytes.
   const imageUrl = await resolvePlayableLevelImageUrl(row.image_path, row.sort_order);
 
   return {

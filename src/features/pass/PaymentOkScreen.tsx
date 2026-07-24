@@ -119,8 +119,8 @@ export default function PaymentOkScreen() {
           <h1 className="pass-title">¡Suscripción activa!</h1>
           <p className="pass-lead">
             {seasonName
-              ? `Ya puedes jugar los niveles de pago de ${seasonName} y las demás temporadas.`
-              : 'Tu suscripción mensual ya está activa.'}
+              ? 'Tu pase mensual ya está activo. Puedes jugar especiales y fallar sin gastar corazones.'
+              : 'Tu pase mensual ya está activo.'}
           </p>
           <Link className="btn-cta pass-cta" to="/levels">
             Ir a niveles
@@ -140,7 +140,7 @@ export default function PaymentOkScreen() {
           <Link className="btn-cta pass-cta" to="/levels">
             Ir a niveles
           </Link>
-          <Link className="pass-link" to="/mis-temporadas">
+          <Link className="pass-link" to="/mi-suscripcion">
             Ver mi suscripción
           </Link>
         </>
@@ -151,7 +151,7 @@ export default function PaymentOkScreen() {
           <p className="pass-lead">
             No pudimos confirmar la suscripción. Revisa Mi suscripción o Mercado Pago.
           </p>
-          <Link className="btn-cta pass-cta" to="/mis-temporadas">
+          <Link className="btn-cta pass-cta" to="/mi-suscripcion">
             Mi suscripción
           </Link>
         </>

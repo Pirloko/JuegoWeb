@@ -224,7 +224,7 @@ export default function HomeScreen() {
           <button
             type="button"
             className="home-pass-cta"
-            onClick={() => navigate(`/pase/${season.id}`)}
+            onClick={() => navigate('/pase')}
           >
             <span className="home-pass-left">
               <CrownIcon />

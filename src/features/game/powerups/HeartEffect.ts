@@ -13,11 +13,13 @@ export class HeartEffect implements PowerUpEffect<HeartConfig> {
     const y = (ctx.cell.row + 0.5) * CELL;
     const pulse = ctx.scene.add.circle(x, y, 14, 0xf472b6, 0.5).setDepth(21);
     const label = ctx.scene.add
-      .text(x, y - 18, `+${amount}♥`, {
+      .text(x, y - 18, `+${amount}`, {
         fontFamily: 'system-ui, sans-serif',
-        fontSize: '18px',
+        fontSize: '20px',
         fontStyle: 'bold',
         color: '#fda4af',
+        stroke: '#831843',
+        strokeThickness: 4,
       })
       .setOrigin(0.5)
       .setDepth(22);

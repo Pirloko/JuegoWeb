@@ -37,7 +37,15 @@ export class RevealSystem {
     for (let row = 0; row < territory.rows; row++) {
       for (let col = 0; col < territory.cols; col++) {
         const state = territory.stateAt(col, row);
-        if (state !== CellState.Free) this.setCellState(col, row, state);
+        if (state === CellState.Free) continue;
+        const x = col * CELL;
+        const y = row * CELL;
+        // Borde inicial CONQUERED: color sólido, NUNCA perforar (evita spoiler del perímetro).
+        if (state === CellState.Conquered) {
+          this.cover.fill(COLORS.conquered, 1, x, y, CELL, CELL);
+        } else if (state === CellState.Trail) {
+          this.cover.fill(COLORS.trail, 1, x, y, CELL, CELL);
+        }
       }
     }
   }

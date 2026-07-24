@@ -15,6 +15,7 @@ import OrientationGate from '@/components/OrientationGate';
 import AppShell from '@/components/AppShell';
 import RequireAdmin from '@/features/admin/RequireAdmin';
 import BlockAdminFromPlayer from '@/features/admin/BlockAdminFromPlayer';
+import RequireMobilePlayer from '@/features/auth/RequireMobilePlayer';
 import HomeOrAdminRedirect from '@/features/admin/HomeOrAdminRedirect';
 import AdminDashboardScreen from '@/features/admin/AdminDashboardScreen';
 import AdminLevelsScreen from '@/features/admin/AdminLevelsScreen';
@@ -24,7 +25,7 @@ import AdminFriendSitesScreen from '@/features/admin/AdminFriendSitesScreen';
 import AdminSubscriptionsScreen from '@/features/admin/AdminSubscriptionsScreen';
 import SeasonPassScreen from '@/features/pass/SeasonPassScreen';
 import PaymentOkScreen from '@/features/pass/PaymentOkScreen';
-import MySeasonsScreen from '@/features/pass/MySeasonsScreen';
+import MyMembershipScreen from '@/features/pass/MyMembershipScreen';
 import { TutorialProvider } from '@/features/tutorial/TutorialProvider';
 
 const GameScreen = lazy(() => import('@/features/game/GameScreen'));
@@ -62,7 +63,9 @@ export default function App() {
               element={
                 <RequireAuth>
                   <BlockAdminFromPlayer>
-                    <LevelsScreen />
+                    <RequireMobilePlayer>
+                      <LevelsScreen />
+                    </RequireMobilePlayer>
                   </BlockAdminFromPlayer>
                 </RequireAuth>
               }
@@ -72,7 +75,9 @@ export default function App() {
               element={
                 <RequireAuth>
                   <BlockAdminFromPlayer>
-                    <GalleryScreen />
+                    <RequireMobilePlayer>
+                      <GalleryScreen />
+                    </RequireMobilePlayer>
                   </BlockAdminFromPlayer>
                 </RequireAuth>
               }
@@ -81,7 +86,9 @@ export default function App() {
               path="/perfil"
               element={
                 <RequireAuth>
-                  <ProfileScreen />
+                  <RequireMobilePlayer>
+                    <ProfileScreen />
+                  </RequireMobilePlayer>
                 </RequireAuth>
               }
             />
@@ -90,21 +97,26 @@ export default function App() {
               element={
                 <RequireAuth>
                   <BlockAdminFromPlayer>
-                    <BadgesScreen />
+                    <RequireMobilePlayer>
+                      <BadgesScreen />
+                    </RequireMobilePlayer>
                   </BlockAdminFromPlayer>
                 </RequireAuth>
               }
             />
             <Route
-              path="/mis-temporadas"
+              path="/mi-suscripcion"
               element={
                 <RequireAuth>
                   <BlockAdminFromPlayer>
-                    <MySeasonsScreen />
+                    <RequireMobilePlayer>
+                      <MyMembershipScreen />
+                    </RequireMobilePlayer>
                   </BlockAdminFromPlayer>
                 </RequireAuth>
               }
             />
+            <Route path="/mis-temporadas" element={<Navigate to="/mi-suscripcion" replace />} />
             <Route
               path="/admin"
               element={
@@ -156,11 +168,25 @@ export default function App() {
           </Route>
 
           <Route
+            path="/pase"
+            element={
+              <RequireAuth>
+                <BlockAdminFromPlayer>
+                  <RequireMobilePlayer>
+                    <SeasonPassScreen />
+                  </RequireMobilePlayer>
+                </BlockAdminFromPlayer>
+              </RequireAuth>
+            }
+          />
+          <Route
             path="/pase/:seasonId"
             element={
               <RequireAuth>
                 <BlockAdminFromPlayer>
-                  <SeasonPassScreen />
+                  <RequireMobilePlayer>
+                    <SeasonPassScreen />
+                  </RequireMobilePlayer>
                 </BlockAdminFromPlayer>
               </RequireAuth>
             }
@@ -170,7 +196,9 @@ export default function App() {
             element={
               <RequireAuth>
                 <BlockAdminFromPlayer>
-                  <PaymentOkScreen />
+                  <RequireMobilePlayer>
+                    <PaymentOkScreen />
+                  </RequireMobilePlayer>
                 </BlockAdminFromPlayer>
               </RequireAuth>
             }
@@ -181,9 +209,11 @@ export default function App() {
             element={
               <RequireAuth>
                 <BlockAdminFromPlayer>
-                  <Suspense fallback={<div className="screen-loading">Cargando…</div>}>
-                    <GameScreen />
-                  </Suspense>
+                  <RequireMobilePlayer>
+                    <Suspense fallback={<div className="screen-loading">Cargando…</div>}>
+                      <GameScreen />
+                    </Suspense>
+                  </RequireMobilePlayer>
                 </BlockAdminFromPlayer>
               </RequireAuth>
             }

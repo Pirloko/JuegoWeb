@@ -97,7 +97,7 @@ export interface LevelConfig {
   timeLimitSec: number;
   enemies: EnemyConfig[];
   powerUps: PowerUpConfig[];
-  /** Imagen oculta que se revela al conquistar (URL o path servido). */
+  /** Full del nivel para Phaser (bajo la niebla). Overlay de victoria firma de nuevo tras completar. */
   imageUrl: string;
 }
 

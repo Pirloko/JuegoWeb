@@ -203,3 +203,85 @@
   text-decoration: none;
   font-size: 0.85rem;
 }
+
+/* Mi suscripción — pase único + corazones */
+.membership-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+.membership-card.is-active {
+  border-color: rgba(45, 212, 191, 0.45);
+}
+
+.membership-card.is-empty {
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.membership-card-head strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+}
+
+.membership-meta {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.membership-perks {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.membership-perks li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.membership-perks li::before {
+  content: '·';
+  position: absolute;
+  left: 4px;
+  color: var(--accent-2);
+  font-weight: 700;
+}
+
+.membership-hearts-row {
+  font-size: 1.35rem;
+  letter-spacing: 0.12em;
+  color: var(--accent-hot);
+  line-height: 1;
+}
+
+.membership-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.membership-btn {
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+}
+
+.membership-link {
+  margin-top: 0;
+}

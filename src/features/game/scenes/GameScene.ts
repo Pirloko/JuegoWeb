@@ -1,15 +1,16 @@
 import Phaser from 'phaser';
 import type { LevelConfig, LevelResultStats } from '@/types/level';
-import { BORDER_CELLS, CELL, COLORS, COLS, GAME_HEIGHT, GAME_WIDTH, ROWS } from '../core/constants';
+import { BORDER_CELLS, CELL, COLS, GAME_HEIGHT, GAME_WIDTH, ROWS } from '../core/constants';
 import { gameEvents } from '../core/GameEvents';
 import { CellState, TerritorySystem, type Cell } from '../systems/TerritorySystem';
 import { RevealSystem } from '../systems/RevealSystem';
 import { PowerUpSystem } from '../systems/PowerUpSystem';
 import { applyPowerUp } from '../powerups/registry';
 import type { PowerUpContext } from '../powerups/PowerUpEffect';
-import { Player } from '../entities/Player';
+import { Player, PLAYER_HIT } from '../entities/Player';
 import { Enemy } from '../entities/Enemy';
 import { VirtualJoystick } from '../input/VirtualJoystick';
+import { preloadGameSprites } from '../assets/sprites';
 
 const LEVEL_IMAGE_KEY = 'level-image';
 
@@ -53,6 +54,7 @@ export class GameScene extends Phaser.Scene {
     this.load.on('loaderror', () => {
       /* no-op: create() genera textura de respaldo */
     });
+    preloadGameSprites(this);
     const url = this.level.imageUrl?.trim();
     // URL vacía rompe el loader de Phaser (la escena nunca arranca).
     if (url) {
@@ -166,7 +168,7 @@ export class GameScene extends Phaser.Scene {
   private boostSpeed(multiplier: number, durationMs: number): void {
     this.speedBoostUntil = Math.max(this.speedBoostUntil, this.time.now + durationMs);
     this.player.setSpeedMultiplier(multiplier);
-    this.player.setFillStyle(0xfde68a);
+    this.player.setBoostVisual(true);
   }
 
   /** Power-up corazón → React aplica RPC grant_energy_hearts. */
@@ -207,7 +209,7 @@ export class GameScene extends Phaser.Scene {
   private tickBuffs(time: number): void {
     if (time >= this.speedBoostUntil) {
       this.player.setSpeedMultiplier(1);
-      this.player.setFillStyle(COLORS.player);
+      this.player.setBoostVisual(false);
     }
     if (time < this.shieldUntil) {
       this.ensureShieldFx();
@@ -223,10 +225,19 @@ export class GameScene extends Phaser.Scene {
   private ensureShieldFx(): void {
     if (this.shieldFx) return;
     this.shieldFx = this.add
-      .circle(this.player.x, this.player.y, 22)
-      .setStrokeStyle(3, 0x38bdf8, 0.9)
-      .setFillStyle(0x38bdf8, 0.12)
+      .circle(this.player.x, this.player.y, 28)
+      .setStrokeStyle(3, 0x67e8f9, 0.95)
+      .setFillStyle(0xf472b6, 0.1)
       .setDepth(11);
+    this.tweens.add({
+      targets: this.shieldFx,
+      scale: { from: 0.92, to: 1.08 },
+      alpha: { from: 0.75, to: 1 },
+      duration: 480,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
   }
 
   /** Pipeline común de conquista directa (power-ups). */
@@ -338,7 +349,7 @@ export class GameScene extends Phaser.Scene {
       if (!bodyProtected) {
         const dx = enemy.x - this.player.x;
         const dy = enemy.y - this.player.y;
-        const minDist = enemy.radius + this.player.width / 2;
+        const minDist = enemy.radius + PLAYER_HIT / 2;
         if (dx * dx + dy * dy < minDist * minDist) {
           this.loseLife(time);
           return;

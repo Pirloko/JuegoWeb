@@ -22,7 +22,9 @@ enum CellState { FREE, CONQUERED, TRAIL }
 ```
 
 - Estado inicial: borde exterior `CONQUERED` (zona segura perimetral),
-  interior `FREE`.
+  interior `FREE`. El borde se pinta de color sólido (no perfora la foto).
+- En partida Phaser usa la **full** nítida bajo la niebla. Media especial
+  (GIF/video) solo tras completar.
 - El jugador se mueve en coordenadas continuas pero el sistema muestrea su
   posición a celdas.
 - Sobre `CONQUERED` el jugador está a salvo. Al entrar en `FREE` empieza a

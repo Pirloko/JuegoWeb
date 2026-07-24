@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
+  fetchActiveSeason,
   fetchSeason,
   hasSeasonPass,
   seasonPricing,
-  startSeasonCheckout,
+  startPassCheckout,
   usesStaticPaymentLink,
 } from '@/services/supabase/seasons';
-import {
-  formatClp,
-  MP_MANAGE_SUBSCRIPTION_URL,
-} from '@/types/database';
+import { formatClp, MP_MANAGE_SUBSCRIPTION_URL } from '@/types/database';
 import type { SeasonRow } from '@/types/database';
 import './pass.css';
 
+/** Paywall del pase mensual único (precio de la temporada activa). */
 export default function SeasonPassScreen() {
-  const { seasonId } = useParams<{ seasonId: string }>();
+  const { seasonId: seasonIdParam } = useParams<{ seasonId?: string }>();
   const [params] = useSearchParams();
   const navigate = useNavigate();
 
@@ -28,14 +27,14 @@ export default function SeasonPassScreen() {
   const cancelled = params.get('cancel') === '1';
 
   const load = useCallback(async () => {
-    if (!seasonId) {
-      setError('Temporada no indicada');
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setError(null);
     try {
+      const seasonId = seasonIdParam ?? (await fetchActiveSeason())?.id;
+      if (!seasonId) {
+        setError('No hay temporada activa');
+        return;
+      }
       const [s, pass] = await Promise.all([fetchSeason(seasonId), hasSeasonPass(seasonId)]);
       if (!s) {
         setError('Temporada no encontrada');
@@ -44,25 +43,24 @@ export default function SeasonPassScreen() {
       setSeason(s);
       setOwned(pass);
       if (pass) {
-        navigate('/levels', { replace: true });
+        navigate('/mi-suscripcion', { replace: true });
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar');
     } finally {
       setLoading(false);
     }
-  }, [seasonId, navigate]);
+  }, [seasonIdParam, navigate]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   async function onBuy() {
-    if (!seasonId) return;
     setCheckoutLoading(true);
     setError(null);
     try {
-      const { url } = await startSeasonCheckout(seasonId);
+      const { url } = await startPassCheckout();
       window.location.href = url;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo iniciar la suscripción');
@@ -96,11 +94,11 @@ export default function SeasonPassScreen() {
         ←
       </button>
 
-      <p className="pass-eyebrow">Pase premium · 30 días</p>
-      <h1 className="pass-title">{season.name}</h1>
+      <p className="pass-eyebrow">Pase mensual · ~30 días</p>
+      <h1 className="pass-title">Pase premium</h1>
       <p className="pass-lead">
-        Las estrellas abren temporadas. El pase abre los niveles especiales (GIF y video) de las
-        temporadas que ya liberaste. Lo que ya revelaste se queda en tu galería.
+        Un solo pase para todas las temporadas que ya liberaste con estrellas. Juega especiales
+        (GIF y video), falla sin perder corazones y conserva tu galería aunque venza el pase.
       </p>
 
       {cancelled && (
@@ -117,9 +115,10 @@ export default function SeasonPassScreen() {
       )}
 
       <ul className="pass-perks">
-        <li>Vigencia ~30 días (se renueva con el cobro mensual de Mercado Pago)</li>
-        <li>Jugar y revelar GIF/video de temporadas ya liberadas por ★</li>
-        <li>Los niveles foto siguen gratis · lo revelado queda en tu galería</li>
+        <li>Se renueva con el cobro mensual de Mercado Pago</li>
+        <li>Especiales de temporadas desbloqueadas por ★</li>
+        <li>Niveles foto siguen gratis · lo revelado queda en galería</li>
+        <li>Con pase activo, fallar no gasta corazones</li>
         <li>
           Cancela cuando quieras en{' '}
           <a href={MP_MANAGE_SUBSCRIPTION_URL} target="_blank" rel="noreferrer">

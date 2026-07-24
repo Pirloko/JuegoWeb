@@ -46,29 +46,41 @@ function candidatePaths(imagePath: string, sortOrder: number): string[] {
 }
 
 /**
+ * URL firmada del full/thumb con candidatos (.webp/.png).
+ * Devuelve null si no hay acceso (nunca el candado — eso es solo para listas locked).
+ */
+export async function resolveCompletedImageUrl(
+  imagePath: string,
+  sortOrder: number,
+): Promise<string | null> {
+  for (const path of candidatePaths(imagePath, sortOrder)) {
+    const signed = await createSignedImageUrl(path);
+    if (signed) return signed;
+  }
+  if (import.meta.env.DEV) {
+    const local = localLevelImageUrl(sortOrder);
+    if (local !== LOCKED_LEVEL_PLACEHOLDER) return local;
+  }
+  console.warn(`[storage] Sin full tras completar: ${imagePath}`);
+  return null;
+}
+
+/**
  * URL para <img> (signed). Sin fallback a fotos públicas en producción.
  */
 export async function resolveLevelImageUrl(
   imagePath: string,
   sortOrder: number,
 ): Promise<string> {
-  for (const path of candidatePaths(imagePath, sortOrder)) {
-    const signed = await createSignedImageUrl(path);
-    if (signed) return signed;
-  }
-
-  if (import.meta.env.DEV) {
-    const local = localLevelImageUrl(sortOrder);
-    console.warn(`[storage] DEV fallback ${imagePath} → ${local}`);
-    return local;
-  }
-
+  const url = await resolveCompletedImageUrl(imagePath, sortOrder);
+  if (url) return url;
   console.warn(`[storage] Sin acceso a ${imagePath} (¿locked / RLS?)`);
   return LOCKED_LEVEL_PLACEHOLDER;
 }
 
 /**
- * URL blob: para Phaser. Sin fallback a fotos públicas en producción.
+ * URL blob para Phaser en partida (full nítida).
+ * Locked no llega aquí: fetchPlayableLevel corta antes.
  */
 export async function resolvePlayableLevelImageUrl(
   imagePath: string,

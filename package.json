@@ -11,7 +11,8 @@
     "test": "vitest run",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"*.{ts,json,md}\" \"docs/*.md\"",
     "upload:images": "node scripts/upload-level-images.mjs",
-    "blur:thumbs": "node scripts/blur-level-thumbs.mjs"
+    "blur:thumbs": "node scripts/blur-level-thumbs.mjs",
+    "sprites:game": "node scripts/render-game-sprites.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.58.0",

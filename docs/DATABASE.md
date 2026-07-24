@@ -164,8 +164,9 @@ Ver plan y decisiones en `docs/GAMIFICACION_PLAN.md`.
 - `begin_level_attempt` / `complete_level` rechazan si aún no salió.
 - Cliente: status `upcoming`, teaser T+1 (`SEASON_TEASER_DAYS` = 7).
 
-- `can_read_level_image` (00034): thumbs y full solo si
-  `unlocked`/`completed`; `media.*` solo `completed`. Locked = sin bytes.
+- `can_read_level_image` (00034→00037): thumb+full si `unlocked`/`completed`;
+  media solo `completed`. Partida usa full nítida; borde inicial no perfora.
+  Locked = sin bytes.
 - Cliente: lista/galería no firman thumbs de locked; placeholder SVG.
 - Sin fallback a `public/levels/*.png` en producción (eran spoiler).
 - Thumbs nuevas al subir: blur en `prepareLevelImage`.

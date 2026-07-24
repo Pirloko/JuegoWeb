@@ -356,6 +356,77 @@ body::after {
   }
 }
 
+/* Desktop: jugadores deben usar smartphone */
+.desktop-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 24px;
+  padding-top: max(28px, env(safe-area-inset-top));
+  padding-bottom: max(28px, env(safe-area-inset-bottom));
+  background: var(--bg-void);
+  color: var(--text);
+  text-align: center;
+}
+
+.desktop-gate-card {
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  animation: rise-in var(--t-med) var(--ease-out) both;
+}
+
+.desktop-gate-phone {
+  width: 44px;
+  height: 78px;
+  border: 3px solid transparent;
+  border-radius: 14px;
+  background:
+    linear-gradient(var(--bg-void), var(--bg-void)) padding-box,
+    var(--grad-brand) border-box;
+  box-shadow: 0 0 32px rgba(139, 92, 246, 0.35);
+  position: relative;
+}
+
+.desktop-gate-phone::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line-strong);
+}
+
+.desktop-gate-card h1 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.25;
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.desktop-gate-card p {
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.desktop-gate-aside {
+  font-size: 0.88rem !important;
+  color: var(--text-dim) !important;
+}
+
 /* Anti-copia suave (web; no es DRM). */
 .content-shield {
   position: relative;

@@ -145,6 +145,32 @@ export function usesStaticPaymentLink(): boolean {
   return Boolean(import.meta.env.VITE_MERCADOPAGO_PAYMENT_LINK?.trim());
 }
 
+/** Fin de vigencia del pase mensual (sub global o entitlement de la season activa). */
+export async function fetchMembershipPassExpiry(): Promise<string | null> {
+  const sub = await fetchMySubscription();
+  if (sub?.status === 'authorized') {
+    const end = sub.current_period_end ?? null;
+    if (end && new Date(end).getTime() > Date.now()) {
+      return end;
+    }
+  }
+  const active = await fetchActiveSeason();
+  if (!active) return null;
+  return fetchPassExpiresAt(active.id);
+}
+
+export async function fetchMembershipPassActive(): Promise<boolean> {
+  const expiry = await fetchMembershipPassExpiry();
+  return Boolean(expiry && new Date(expiry).getTime() > Date.now());
+}
+
+/** Checkout del pase mensual (usa temporada activa para precio / MP). */
+export async function startPassCheckout(): Promise<{ url: string }> {
+  const season = await fetchActiveSeason();
+  if (!season) throw new Error('No hay temporada activa');
+  return startSeasonCheckout(season.id);
+}
+
 /**
  * Inicia suscripción mensual.
  * Si hay VITE_MERCADOPAGO_PAYMENT_LINK → link estático (parche).
@@ -174,7 +200,7 @@ export async function startSeasonCheckout(seasonId: string): Promise<{ url: stri
     body: JSON.stringify({
       season_id: seasonId,
       success_url: `${window.location.origin}/pago/ok?season=${seasonId}`,
-      cancel_url: `${window.location.origin}/pase/${seasonId}?cancel=1`,
+      cancel_url: `${window.location.origin}/pase?cancel=1`,
     }),
   });
 

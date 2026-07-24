@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { LevelConfig, LevelResultStats } from '@/types/level';
 import { completeLevel, fetchNextPlayableLevelId, fetchPlayableLevel } from '@/services/supabase/levels';
 import { awardBadges } from '@/services/supabase/badges';
-import { createSignedImageUrl } from '@/services/supabase/storage';
+import { createSignedImageUrl, resolveCompletedImageUrl } from '@/services/supabase/storage';
 import { endGameSession } from '@/services/supabase/gameSessions';
 import {
   beginLevelAttempt,
@@ -39,6 +39,8 @@ interface Result {
   newBadges: BadgeId[];
   /** Signed URL del GIF/video si el nivel es especial (para el revelado). */
   mediaUrl: string | null;
+  /** Full nítida (solo tras ganar + complete_level). */
+  fullImageUrl: string | null;
   /** Tras pulsar "Revelar imagen". */
   revealed: boolean;
   nextLevelId: string | null;
@@ -54,6 +56,7 @@ export default function GameScreen() {
     type: 'image',
     path: null,
   });
+  const [fullImagePath, setFullImagePath] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [gateSeasonId, setGateSeasonId] = useState<string | null>(null);
   const levelSeasonIdRef = useRef<string | null>(null);
@@ -136,6 +139,7 @@ export default function GameScreen() {
           type: data.level.media_type ?? 'image',
           path: data.level.media_path ?? null,
         });
+        setFullImagePath(data.level.image_path);
         setPct(0);
         setRemainingMs(
           data.config.timeLimitSec > 0 ? data.config.timeLimitSec * 1000 : null,
@@ -274,6 +278,7 @@ export default function GameScreen() {
           saving: true,
           newBadges: [],
           mediaUrl: null,
+          fullImageUrl: null,
           revealed: false,
           nextLevelId: null,
         });
@@ -287,6 +292,7 @@ export default function GameScreen() {
           saving: false,
           newBadges: [],
           mediaUrl: null,
+          fullImageUrl: null,
           revealed: false,
           nextLevelId: null,
         });
@@ -335,6 +341,20 @@ export default function GameScreen() {
         let mediaUrl: string | null = null;
         if (levelMedia.type !== 'image' && levelMedia.path) {
           mediaUrl = await createSignedImageUrl(levelMedia.path);
+          if (!mediaUrl && levelMedia.path) {
+            // Reintento corto: RLS a veces tarda un tick tras complete_level.
+            await new Promise((r) => setTimeout(r, 350));
+            mediaUrl = await createSignedImageUrl(levelMedia.path);
+          }
+        }
+        // Full nítida solo después de complete_level (misma ruta que galería).
+        let fullImageUrl: string | null = null;
+        if (fullImagePath) {
+          fullImageUrl = await resolveCompletedImageUrl(fullImagePath, levelSortOrder);
+          if (!fullImageUrl) {
+            await new Promise((r) => setTimeout(r, 350));
+            fullImageUrl = await resolveCompletedImageUrl(fullImagePath, levelSortOrder);
+          }
         }
         let nextLevelId: string | null = null;
         const seasonId = levelSeasonIdRef.current;
@@ -346,7 +366,9 @@ export default function GameScreen() {
           }
         }
         setResult((r) =>
-          r ? { ...r, saving: false, saveError: null, newBadges, mediaUrl, nextLevelId } : r,
+          r
+            ? { ...r, saving: false, saveError: null, newBadges, mediaUrl, fullImageUrl, nextLevelId }
+            : r,
         );
       } catch (e) {
         setResult((r) =>
@@ -360,7 +382,7 @@ export default function GameScreen() {
         );
       }
     })();
-  }, [result, levelId, levelMedia, levelSortOrder]);
+  }, [result, levelId, levelMedia, levelSortOrder, fullImagePath]);
 
   const retry = () => {
     if (!config) return;
@@ -379,9 +401,17 @@ export default function GameScreen() {
     setRunId((n) => n + 1);
   };
 
-  function revealImage() {
+  async function revealImage() {
+    let url = result?.fullImageUrl ?? null;
+    if (!url && fullImagePath) {
+      url = await resolveCompletedImageUrl(fullImagePath, levelSortOrder);
+      if (!url) {
+        await new Promise((r) => setTimeout(r, 350));
+        url = await resolveCompletedImageUrl(fullImagePath, levelSortOrder);
+      }
+    }
     gameEvents.emit('game:reveal', {});
-    setResult((r) => (r ? { ...r, revealed: true } : r));
+    setResult((r) => (r ? { ...r, fullImageUrl: url ?? r.fullImageUrl, revealed: true } : r));
   }
 
   function goNextLevel() {
@@ -456,7 +486,7 @@ export default function GameScreen() {
               <button
                 className="btn-ghost"
                 type="button"
-                onClick={() => navigate(`/pase/${gateSeasonId}`)}
+                onClick={() => navigate('/pase')}
               >
                 Activar pase
               </button>
@@ -476,7 +506,7 @@ export default function GameScreen() {
           <button
             className="btn-cta"
             type="button"
-            onClick={() => navigate(`/pase/${gateSeasonId}`)}
+            onClick={() => navigate('/pase')}
           >
             Desbloquear especial (GIF/video)
           </button>
@@ -558,21 +588,29 @@ export default function GameScreen() {
                 : 'Has perdido'}
             </h2>
             {result.won && result.revealed && levelMedia.type !== 'image' && (
-              <RevealedMedia
-                mediaType={levelMedia.type}
-                mediaUrl={result.mediaUrl}
-                posterUrl={config.imageUrl}
-                alt={levelName}
-                className="result-media"
-              />
+              result.mediaUrl || result.fullImageUrl ? (
+                <RevealedMedia
+                  mediaType={levelMedia.type}
+                  mediaUrl={result.mediaUrl}
+                  posterUrl={result.fullImageUrl ?? ''}
+                  alt={levelName}
+                  className="result-media"
+                />
+              ) : (
+                <p className="result-save-error">No se pudo cargar el contenido. Ábrelo en Galería.</p>
+              )
             )}
             {result.won && result.revealed && levelMedia.type === 'image' && (
-              <img
-                className="result-media"
-                src={config.imageUrl}
-                alt={levelName}
-                draggable={false}
-              />
+              result.fullImageUrl ? (
+                <img
+                  className="result-media"
+                  src={result.fullImageUrl}
+                  alt={levelName}
+                  draggable={false}
+                />
+              ) : (
+                <p className="result-save-error">No se pudo cargar la imagen. Ábrela en Galería.</p>
+              )
             )}
             <p className="result-stats">
               Conquistado: {Math.floor(result.stats.conqueredPct)}% ·{' '}
@@ -614,7 +652,7 @@ export default function GameScreen() {
                       className="btn-primary"
                       type="button"
                       disabled={result.saving}
-                      onClick={revealImage}
+                      onClick={() => void revealImage()}
                     >
                       Revelar imagen
                     </button>

@@ -2,8 +2,9 @@
 
 ## Principio
 
-El único target de diseño es un smartphone en vertical. Desktop se soporta
-"de regalo" (canvas centrado con letterbox), nunca al revés.
+El único target de diseño es un smartphone en vertical. **Jugadores en desktop
+(PC con ratón) ven pantalla de invitación a celular** (`RequireMobilePlayer`);
+admin entra desde PC o móvil. Login/legal siguen abiertos en desktop.
 
 ## Viewport y layout
 

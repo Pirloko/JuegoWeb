@@ -306,13 +306,13 @@ export default function ProfileScreen() {
               </span>
             </button>
 
-            <button type="button" className="profile-row" onClick={() => navigate('/mis-temporadas')}>
+            <button type="button" className="profile-row" onClick={() => navigate('/mi-suscripcion')}>
               <span className="profile-row-icon sub">
                 <RowIcon kind="sub" />
               </span>
               <span className="profile-row-text">
                 <strong>Mi suscripción</strong>
-                <small>Estado y temporadas</small>
+                <small>Pase mensual y corazones</small>
               </span>
               <span className="profile-row-chevron" aria-hidden>
                 ›
