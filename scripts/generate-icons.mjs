@@ -1,5 +1,6 @@
-// Genera iconos PWA y logo-brand desde public/icons/logo.png
-// Uso: node scripts/generate-icons.mjs  (requiere red la 1ª vez por npx sharp-cli)
+// Genera iconos PWA desde public/icons/logo.png (órbita).
+// logo-brand.png / logo-mark.png se actualizan al instalar el pack de marca.
+// Uso: node scripts/generate-icons.mjs
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -9,7 +10,7 @@ const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'i
 const LOGO = join(OUT_DIR, 'logo.png');
 
 if (!existsSync(LOGO)) {
-  console.error('Falta public/icons/logo.png (logo oficial)');
+  console.error('Falta public/icons/logo.png (órbita oficial)');
   process.exit(1);
 }
 
@@ -22,11 +23,9 @@ function sharpCli(...args) {
 
 const icon512 = join(OUT_DIR, 'icon-512.png');
 const icon192 = join(OUT_DIR, 'icon-192.png');
-const brand = join(OUT_DIR, 'logo-brand.png');
 
 sharpCli('-i', LOGO, '-o', icon512, 'resize', '512', '512', '--fit', 'contain', '--background', '#080b16');
 sharpCli('-i', LOGO, '-o', icon192, 'resize', '192', '192', '--fit', 'contain', '--background', '#080b16');
 copyFileSync(icon512, join(OUT_DIR, 'icon-512-maskable.png'));
-sharpCli('-i', LOGO, '-o', brand, 'resize', '720', '--withoutEnlargement');
 
-console.log('✓ logo-brand.png, icon-192, icon-512, icon-512-maskable');
+console.log('✓ icon-192, icon-512, icon-512-maskable (desde logo.png)');

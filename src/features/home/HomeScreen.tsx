@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/auth-context';
 import InstallBanner from '@/components/InstallBanner';
 import BrandLogo from '@/components/BrandLogo';
-import { fetchActiveSeason, fetchNextSeason, hasSeasonPass, seasonPricing } from '@/services/supabase/seasons';
+import { fetchActiveSeason, fetchNextSeason, hasSeasonPass, PASS_MONTHLY_PRICE_CLP } from '@/services/supabase/seasons';
 import { fetchLevelsWithProgress } from '@/services/supabase/levels';
 import { formatClp } from '@/types/database';
 import type { SeasonRow } from '@/types/database';
@@ -156,7 +156,7 @@ export default function HomeScreen() {
     );
   }
 
-  const pricing = season ? seasonPricing(season) : null;
+  const showPassCta = Boolean(season && !owned);
   const showTeaser = Boolean(
     season && nextSeason && isSeasonTeaserWindow(season.ends_at),
   );
@@ -220,7 +220,7 @@ export default function HomeScreen() {
           Jugar
         </button>
 
-        {season && !owned && pricing && (
+        {showPassCta && (
           <button
             type="button"
             className="home-pass-cta"
@@ -228,8 +228,10 @@ export default function HomeScreen() {
           >
             <span className="home-pass-left">
               <CrownIcon />
-              Suscripción · {formatClp(pricing.effectiveClp)}/mes
-              <span className="home-pass-sub">GIF y video</span>
+              <span className="home-pass-copy">
+                <span>Suscripción · {formatClp(PASS_MONTHLY_PRICE_CLP)}/mes</span>
+                <span className="home-pass-sub">GIF y video</span>
+              </span>
             </span>
             <span className="home-pass-chevron" aria-hidden>
               ›

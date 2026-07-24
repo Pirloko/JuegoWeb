@@ -32,8 +32,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [configured]);
 
   const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await getSupabase().auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
+    const { data, error } = await getSupabase().auth.signInWithPassword({ email, password });
+    return {
+      error: error?.message ?? null,
+      user: data.user ?? null,
+    };
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, username: string) => {

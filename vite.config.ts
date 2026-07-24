@@ -26,13 +26,19 @@ export default defineConfig({
             type: 'image/png',
             purpose: 'maskable',
           },
-          { src: 'icons/logo-brand.png', sizes: '720x480', type: 'image/png', purpose: 'any' },
+          { src: 'icons/logo-brand.png', sizes: '1440x810', type: 'image/png', purpose: 'any' },
+          { src: 'icons/logo-mark.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
         ],
       },
       workbox: {
         // Las imágenes de nivel NO van al precache del shell: se cachean en
         // runtime al jugar cada nivel (ver docs/MOBILE.md).
-        globPatterns: ['**/*.{js,css,html,svg,woff2}', 'icons/icon-*.png', 'icons/logo-brand.png'],
+        globPatterns: [
+          '**/*.{js,css,html,svg,woff2}',
+          'icons/icon-*.png',
+          'icons/logo-brand.png',
+          'icons/logo-mark.png',
+        ],
         // Phaser es grande; subir el límite de precache por encima del bundle
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         runtimeCaching: [

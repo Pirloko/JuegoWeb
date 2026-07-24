@@ -381,28 +381,8 @@ body::after {
   animation: rise-in var(--t-med) var(--ease-out) both;
 }
 
-.desktop-gate-phone {
-  width: 44px;
-  height: 78px;
-  border: 3px solid transparent;
-  border-radius: 14px;
-  background:
-    linear-gradient(var(--bg-void), var(--bg-void)) padding-box,
-    var(--grad-brand) border-box;
-  box-shadow: 0 0 32px rgba(139, 92, 246, 0.35);
-  position: relative;
-}
-
-.desktop-gate-phone::after {
-  content: '';
-  position: absolute;
-  bottom: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 18px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--line-strong);
+.desktop-gate-card .brand-logo {
+  margin-bottom: 4px;
 }
 
 .desktop-gate-card h1 {
@@ -425,6 +405,28 @@ body::after {
 .desktop-gate-aside {
   font-size: 0.88rem !important;
   color: var(--text-dim) !important;
+}
+
+.desktop-gate-admin {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+
+.desktop-gate-admin:hover {
+  border-color: var(--accent);
+  color: var(--text);
 }
 
 /* Anti-copia suave (web; no es DRM). */

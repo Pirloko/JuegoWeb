@@ -15,6 +15,49 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  flex-shrink: 0;
+}
+
+.levels-hearts-chip {
+  flex-shrink: 0;
+  margin-top: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.12);
+  color: #f87171;
+  cursor: default;
+}
+
+.levels-hearts-chip:not(:disabled) {
+  cursor: pointer;
+}
+
+.levels-hearts-chip:disabled {
+  opacity: 1;
+}
+
+.levels-hearts-chip.is-empty {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+
+.levels-hearts-chip.is-pass {
+  border-color: rgba(45, 212, 191, 0.4);
+  background: rgba(45, 212, 191, 0.12);
+  color: #5eead4;
+}
+
+.levels-hearts-chip-icons {
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+  line-height: 1;
+  font-variant-emoji: text;
 }
 
 .levels-back {
@@ -138,10 +181,10 @@
 }
 
 .levels-energy-pack-error {
-  flex: 1 1 100%;
-  margin: 0;
+  margin: -4px 0 0;
   font-size: 0.78rem;
   color: #fca5a5;
+  text-align: right;
 }
 
 .levels-energy-chip {
@@ -152,68 +195,176 @@
   display: none;
 }
 
-/* Progress — estilo Galería */
-.levels-progress {
+/* Chips de temporada — sin overflow (evita que flex + overflow-x recorte arriba) */
+.levels-season-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 2px 0;
+}
+
+.levels-season-tab {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1.5px solid #3a4268;
+  background: #161b32;
+  color: #d4d9f0;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  line-height: 1;
+  box-sizing: border-box;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition:
+    border-color 0.2s var(--ease-out),
+    background 0.2s var(--ease-out),
+    color 0.2s var(--ease-out),
+    opacity 0.2s var(--ease-out),
+    box-shadow 0.2s var(--ease-out);
+}
+
+.levels-season-tab.is-active {
+  border-color: #22d3ee;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(34, 211, 238, 0.22));
+  color: #eef0ff;
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.35),
+    0 6px 18px rgba(34, 211, 238, 0.2);
+}
+
+.levels-season-tab.is-locked {
+  opacity: 0.7;
+  color: #9aa3c7;
+  border-color: #2a3150;
+  background: #101428;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.levels-season-tab-lock {
+  display: inline-flex;
+  align-items: center;
+  color: #a8b0d0;
+}
+
+/* ★ temporada → siguiente */
+.levels-stars-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 14px 14px 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  background:
+    linear-gradient(145deg, rgba(251, 191, 36, 0.1) 0%, rgba(139, 92, 246, 0.08) 55%, transparent 100%),
+    #12162a;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
+  animation: rise-in var(--t-med) var(--ease-out) both;
+}
+
+.levels-stars-card.is-ready {
+  border-color: rgba(45, 212, 191, 0.45);
+  background:
+    linear-gradient(145deg, rgba(45, 212, 191, 0.12) 0%, rgba(139, 92, 246, 0.08) 60%, transparent),
+    #12162a;
+}
+
+.levels-stars-head {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.levels-progress-track {
-  position: relative;
+.levels-stars-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  font-size: 1.25rem;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.14);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  box-shadow: 0 0 18px rgba(251, 191, 36, 0.25);
+}
+
+.levels-stars-card.is-ready .levels-stars-icon {
+  color: #5eead4;
+  background: rgba(45, 212, 191, 0.14);
+  border-color: rgba(45, 212, 191, 0.4);
+  box-shadow: 0 0 18px rgba(45, 212, 191, 0.25);
+}
+
+.levels-stars-copy {
   flex: 1;
-  height: 8px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.levels-stars-copy strong {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #eef0ff;
+  letter-spacing: -0.02em;
+}
+
+.levels-stars-copy span {
+  font-size: 0.82rem;
+  color: #9aa3c7;
+  line-height: 1.35;
+}
+
+.levels-stars-badge {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.levels-stars-card.is-ready .levels-stars-badge {
+  color: #5eead4;
+  background: rgba(45, 212, 191, 0.12);
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+.levels-stars-track {
+  height: 10px;
   border-radius: 999px;
   background: #1a2038;
   border: 1px solid #2a3150;
-  overflow: visible;
+  overflow: hidden;
 }
 
-.levels-progress-bar {
+.levels-stars-bar {
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #8b5cf6 0%, #22d3ee 100%);
-  box-shadow: 0 0 12px rgba(34, 211, 238, 0.45);
+  background: linear-gradient(90deg, #fbbf24 0%, #f472b6 55%, #a78bfa 100%);
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.4);
   transition: width 0.7s var(--ease-out);
 }
 
-.levels-progress-tick {
-  position: absolute;
-  top: -2px;
-  bottom: -2px;
-  width: 2px;
-  margin-left: -1px;
-  background: rgba(238, 240, 255, 0.22);
-  border-radius: 1px;
-}
-
-.levels-progress-tick.is-reached {
-  background: rgba(8, 11, 22, 0.55);
-}
-
-.levels-progress-spark {
-  position: absolute;
-  right: -2px;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  margin-top: -5px;
-  border-radius: 50%;
-  background: #67e8f9;
-  box-shadow:
-    0 0 10px #22d3ee,
-    0 0 18px rgba(34, 211, 238, 0.7);
-}
-
-.levels-progress-label {
-  flex-shrink: 0;
-  max-width: 46%;
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #c5cae0;
-  text-align: right;
-  line-height: 1.25;
-  white-space: normal;
+.levels-stars-card.is-ready .levels-stars-bar {
+  background: linear-gradient(90deg, #34d399 0%, #22d3ee 100%);
+  box-shadow: 0 0 14px rgba(45, 212, 191, 0.45);
 }
 
 /* Banner suscripción — estilo home pass CTA */
@@ -222,6 +373,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
   width: 100%;
   min-height: 52px;
   padding: 12px 16px;

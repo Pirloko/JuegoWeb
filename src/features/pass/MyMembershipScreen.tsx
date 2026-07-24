@@ -8,11 +8,10 @@ import {
   type EnergyStatus,
 } from '@/services/supabase/energy';
 import {
-  fetchActiveSeason,
   fetchMembershipPassExpiry,
   fetchMySubscription,
   formatPassExpiry,
-  seasonPricing,
+  PASS_MONTHLY_PRICE_CLP,
   startPassCheckout,
 } from '@/services/supabase/seasons';
 import { formatClp, MP_MANAGE_SUBSCRIPTION_URL } from '@/types/database';
@@ -39,11 +38,10 @@ export default function MyMembershipScreen() {
     setError(null);
     setPackError(null);
     try {
-      const [subscription, expiry, snap, activeSeason] = await Promise.all([
+      const [subscription, expiry, snap] = await Promise.all([
         fetchMySubscription(),
         fetchMembershipPassExpiry(),
         fetchUserEnergy(),
-        fetchActiveSeason(),
       ]);
       setSub(subscription);
       setPassExpiry(expiry);
@@ -52,14 +50,8 @@ export default function MyMembershipScreen() {
       setPassActive(active);
       setEnergy(snap);
       setRefillLabel(formatRefillCountdown(snap.nextRefillAt));
-      if (activeSeason) {
-        const p = seasonPricing(activeSeason);
-        setPassPrice(p.effectiveClp);
-        setPassOnOffer(p.onOffer);
-      } else {
-        setPassPrice(null);
-        setPassOnOffer(false);
-      }
+      setPassPrice(PASS_MONTHLY_PRICE_CLP);
+      setPassOnOffer(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar');
     } finally {

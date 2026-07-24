@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchLevelsWithProgress } from '@/services/supabase/levels';
-import { fetchActiveSeason, fetchNextSeason, hasSeasonPass, seasonPricing } from '@/services/supabase/seasons';
+import {
+  canAccessSeason,
+  fetchNextSeason,
+  fetchSeasons,
+  hasSeasonPass,
+  PASS_MONTHLY_PRICE_CLP,
+} from '@/services/supabase/seasons';
 import {
   ENERGY_PACK_PRICE_CLP,
   fetchUserEnergy,
@@ -11,21 +17,37 @@ import {
 } from '@/services/supabase/energy';
 import { fullscreenService } from '@/services/fullscreen/FullscreenService';
 import { markFirstLevelCompleted } from '@/services/pwa/installPrompt';
-import { formatClp } from '@/types/database';
+import { formatClp, levelRequiresPass } from '@/types/database';
 import type { LevelListItem, SeasonRow } from '@/types/database';
 import {
   formatAvailableAt,
   isSeasonTeaserWindow,
-  milestonesForTotal,
-  seasonProgress,
   seasonRhythmHint,
   starsForLevel,
+  countableStarsTowardSeasonGate,
 } from '@/features/progression/progression';
 import './levels.css';
+
+type SeasonTab = {
+  season: SeasonRow;
+  unlocked: boolean;
+};
 
 function formatTime(ms: number | null): string {
   if (ms == null) return '—';
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+/** Etiqueta corta del chip: "Julio", "Agosto" (prioriza el nombre de la temporada). */
+function seasonChipLabel(season: SeasonRow): string {
+  const first = season.name.trim().split(/\s+/)[0] ?? '';
+  if (first.length >= 3) {
+    return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  }
+  // Fallback: mes en UTC para no correr el mes por zona horaria
+  const d = new Date(season.starts_at);
+  const fromDate = d.toLocaleDateString('es-CL', { month: 'long', timeZone: 'UTC' });
+  return fromDate.charAt(0).toUpperCase() + fromDate.slice(1);
 }
 
 function Stars({ bestPct, targetPct }: { bestPct: number | null; targetPct: number }) {
@@ -65,6 +87,7 @@ function LockIcon({ size = 12 }: { size?: number }) {
 
 export default function LevelsScreen() {
   const navigate = useNavigate();
+  const [tabs, setTabs] = useState<SeasonTab[]>([]);
   const [season, setSeason] = useState<SeasonRow | null>(null);
   const [nextSeason, setNextSeason] = useState<SeasonRow | null>(null);
   const [owned, setOwned] = useState(false);
@@ -74,39 +97,112 @@ export default function LevelsScreen() {
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [items, setItems] = useState<LevelListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingLevels, setLoadingLevels] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const refreshTabLocks = useCallback(async (current: SeasonTab[]) => {
+    const next = await Promise.all(
+      current.map(async (t) => ({
+        season: t.season,
+        unlocked: await canAccessSeason(t.season.id).catch(() => false),
+      })),
+    );
+    setTabs(next);
+  }, []);
+
+  const loadSeasonContent = useCallback(
+    async (selected: SeasonRow) => {
+      setLoadingLevels(true);
+      setError(null);
+      try {
+        const [list, pass, teaser] = await Promise.all([
+          fetchLevelsWithProgress(selected.id),
+          hasSeasonPass(selected.id),
+          fetchNextSeason(selected).catch(() => null),
+        ]);
+        setSeason(selected);
+        setNextSeason(teaser);
+        setOwned(pass);
+        setItems(list);
+        if (list.some((i) => i.status === 'completed')) {
+          markFirstLevelCompleted();
+        }
+        setTabs((prev) => {
+          if (prev.length > 0) void refreshTabLocks(prev);
+          return prev;
+        });
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Error al cargar niveles');
+        setItems([]);
+      } finally {
+        setLoadingLevels(false);
+      }
+    },
+    [refreshTabLocks],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const active = await fetchActiveSeason();
-      if (!active) {
+      const [allSeasons, energyStatus] = await Promise.all([
+        fetchSeasons(),
+        fetchUserEnergy().catch(() => null),
+      ]);
+      setEnergy(energyStatus);
+
+      const sorted = [...allSeasons].sort((a, b) => a.starts_at.localeCompare(b.starts_at));
+      const access = await Promise.all(
+        sorted.map(async (s) => ({
+          season: s,
+          unlocked: await canAccessSeason(s.id).catch(() => false),
+        })),
+      );
+
+      // Catálogo: activas, ya empezadas, o desbloqueadas; más la primera futura bloqueada.
+      const nowIso = new Date().toISOString();
+      const catalog: SeasonTab[] = [];
+      for (const tab of access) {
+        const started = tab.season.starts_at <= nowIso;
+        if (tab.season.is_active || started || tab.unlocked) {
+          catalog.push(tab);
+          continue;
+        }
+        // Primera temporada futura (teaser con candado)
+        if (catalog.length > 0) {
+          catalog.push(tab);
+          break;
+        }
+      }
+      // Si no hay ninguna empezada, mostrar activas + primera del listado
+      if (catalog.length === 0 && access.length > 0) {
+        catalog.push(...access.filter((t) => t.season.is_active));
+        if (catalog.length === 0) catalog.push(access[0]!);
+      }
+
+      setTabs(catalog);
+
+      const preferred =
+        catalog.find((t) => t.season.is_active && t.unlocked)?.season ??
+        catalog.find((t) => t.unlocked)?.season ??
+        null;
+
+      if (!preferred) {
         setSeason(null);
         setItems([]);
-        setError('No hay temporada activa');
+        setError('No hay temporada disponible');
         return;
       }
-      const [list, pass, energyStatus, teaser] = await Promise.all([
-        fetchLevelsWithProgress(active.id),
-        hasSeasonPass(active.id),
-        fetchUserEnergy().catch(() => null),
-        fetchNextSeason(active).catch(() => null),
-      ]);
-      setSeason(active);
-      setNextSeason(teaser);
-      setOwned(pass);
-      setEnergy(energyStatus);
-      setItems(list);
-      if (list.some((i) => i.status === 'completed')) {
-        markFirstLevelCompleted();
-      }
+
+      await loadSeasonContent(preferred);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar niveles');
+      setSeason(null);
+      setItems([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadSeasonContent]);
 
   useEffect(() => {
     void load();
@@ -126,6 +222,12 @@ export default function LevelsScreen() {
       .catch(() => undefined);
   }, [energy, nowTick]);
 
+  async function selectSeason(tab: SeasonTab) {
+    if (!tab.unlocked) return;
+    if (season?.id === tab.season.id) return;
+    await loadSeasonContent(tab.season);
+  }
+
   async function playLevel(levelId: string) {
     await fullscreenService.request();
     navigate(`/play/${levelId}`);
@@ -144,7 +246,6 @@ export default function LevelsScreen() {
   }
 
   function onTile(item: LevelListItem) {
-    // Especial ya revelado sin pase: ver en galería (no rejugar)
     if (item.status === 'completed' && item.needsPass) {
       navigate(`/gallery?level=${item.level.id}`);
       return;
@@ -158,15 +259,22 @@ export default function LevelsScreen() {
     if (playable) void playLevel(item.level.id);
   }
 
-  const completedCount = items.filter((i) => i.status === 'completed').length;
-  const total = Math.max(items.length, 1);
-  const progress = seasonProgress(completedCount, total);
-  const pricing = season ? seasonPricing(season) : null;
   const specialCount = items.filter((i) => i.level.requires_pass).length;
   const showPassBanner = Boolean(season && !owned && specialCount > 0);
   const refillLabel = energy
     ? formatRefillCountdown(energy.nextRefillAt, nowTick)
     : null;
+  const starLevels = items.map((i) => ({
+    bestPct: i.bestPct,
+    targetPct: i.level.config.targetPct,
+    requiresPass: levelRequiresPass(i.level.requires_pass),
+  }));
+  const starsEarned = countableStarsTowardSeasonGate(starLevels);
+  const starsRequired = season?.stars_required_to_unlock_next ?? 0;
+  const starsRemaining = Math.max(0, starsRequired - starsEarned);
+  const starsGatePct =
+    starsRequired > 0 ? Math.min(100, Math.round((100 * starsEarned) / starsRequired)) : 100;
+  const starsGateMet = starsRequired <= 0 || starsEarned >= starsRequired;
   const rhythm = seasonRhythmHint(
     items.map((i) => ({
       status: i.status,
@@ -175,9 +283,8 @@ export default function LevelsScreen() {
       targetPct: i.level.config.targetPct,
     })),
   );
-  const showTeaser = Boolean(
-    season && nextSeason && isSeasonTeaserWindow(season.ends_at),
-  );
+  const showTeaser = Boolean(season && nextSeason && isSeasonTeaserWindow(season.ends_at));
+  const busy = loading || loadingLevels;
 
   return (
     <main className="levels">
@@ -203,80 +310,116 @@ export default function LevelsScreen() {
         <div className="levels-heading">
           <h1 className="levels-title">Niveles</h1>
           <p className="levels-sub">
-            {season ? season.name : 'Toca un nivel disponible'}
+            {season ? season.name : 'Elige una temporada'}
           </p>
         </div>
+        {!loading && energy && (
+          <button
+            type="button"
+            className={`levels-hearts-chip${energy.hearts === 0 && !owned ? ' is-empty' : ''}${owned ? ' is-pass' : ''}`}
+            disabled={owned || energy.hearts >= energy.max || buyingPack}
+            onClick={() => {
+              if (!owned && energy.hearts < energy.max) void buyEnergyPack();
+            }}
+            aria-label={
+              owned
+                ? 'Pase activo: corazones ilimitados'
+                : `${energy.hearts} de ${energy.max} corazones${
+                    energy.hearts < energy.max && refillLabel && refillLabel !== 'ya'
+                      ? `, se recarga 1 en ${refillLabel}`
+                      : ''
+                  }`
+            }
+            title={
+              owned
+                ? 'Ilimitados con pase'
+                : energy.hearts < energy.max
+                  ? `Pack ${energy.max}♥ · ${formatClp(ENERGY_PACK_PRICE_CLP)}`
+                  : `${energy.hearts}/${energy.max} corazones`
+            }
+          >
+            <span className="levels-hearts-chip-icons" aria-hidden>
+              {owned
+                ? '∞♥'
+                : `${'♥'.repeat(energy.hearts)}${'♡'.repeat(Math.max(0, energy.max - energy.hearts))}`}
+            </span>
+          </button>
+        )}
       </header>
+      {packError && <p className="levels-energy-pack-error">{packError}</p>}
 
-      {!loading && energy && (
-        <div
-          className={`levels-energy-bar${energy.hearts === 0 && !owned ? ' is-empty' : ''}`}
-          role="status"
-          aria-label={
-            owned
-              ? 'Pase activo: corazones ilimitados'
-              : `${energy.hearts} de ${energy.max} corazones para jugar`
-          }
-        >
-          <span className="levels-energy-hearts" aria-hidden>
-            {'♥'.repeat(owned ? energy.max : energy.hearts)}
-            {'♡'.repeat(owned ? 0 : Math.max(0, energy.max - energy.hearts))}
-          </span>
-          <div className="levels-energy-meta">
-            <strong>{owned ? 'Ilimitados con pase' : `${energy.hearts} de ${energy.max} corazones`}</strong>
-            {!owned && energy.hearts < energy.max && refillLabel && refillLabel !== 'ya' && (
-              <span>Se recarga 1 en {refillLabel}</span>
-            )}
-            {!owned && energy.hearts === 0 && (
-              <span>Sin corazones no puedes jugar · se pierde 1 al fallar</span>
-            )}
-            {owned && <span>Fallar no gasta corazones</span>}
-          </div>
-          {!owned && energy.hearts < energy.max && (
-            <button
-              type="button"
-              className="levels-energy-pack"
-              disabled={buyingPack}
-              onClick={() => void buyEnergyPack()}
-            >
-              {buyingPack ? 'Abriendo…' : `Pack ${energy.max}♥ · ${formatClp(ENERGY_PACK_PRICE_CLP)}`}
-            </button>
-          )}
-          {packError && <p className="levels-energy-pack-error">{packError}</p>}
+      {!loading && tabs.length > 0 && (
+        <div className="levels-season-tabs" role="tablist" aria-label="Temporadas">
+          {tabs.map((tab) => {
+            const selected = season?.id === tab.season.id;
+            const label = seasonChipLabel(tab.season);
+            return (
+              <button
+                key={tab.season.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                className={`levels-season-tab${selected ? ' is-active' : ''}${tab.unlocked ? '' : ' is-locked'}`}
+                disabled={!tab.unlocked || loadingLevels}
+                onClick={() => void selectSeason(tab)}
+                aria-label={
+                  tab.unlocked
+                    ? `Temporada ${label}`
+                    : `Temporada ${label}, bloqueada. Consigue más estrellas.`
+                }
+              >
+                {!tab.unlocked && (
+                  <span className="levels-season-tab-lock">
+                    <LockIcon size={13} />
+                  </span>
+                )}
+                <span>{label}</span>
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {!loading && items.length > 0 && (
-        <div
-          className="levels-progress"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={progress.total}
-          aria-valuenow={progress.completed}
-          aria-label={`Progreso: ${progress.completed} de ${progress.total} niveles`}
+      {!busy && season && items.length > 0 && starsRequired > 0 && (
+        <section
+          className={`levels-stars-card${starsGateMet ? ' is-ready' : ''}`}
+          aria-label={`Estrellas de temporada: ${starsEarned} de ${starsRequired}`}
         >
-          <div className="levels-progress-track">
-            <div className="levels-progress-bar" style={{ width: `${progress.pct}%` }} />
-            {milestonesForTotal(progress.total)
-              .filter((m) => m < progress.total)
-              .map((m) => (
-                <span
-                  key={m}
-                  className={`levels-progress-tick${m <= progress.completed ? ' is-reached' : ''}`}
-                  style={{ left: `${(m / progress.total) * 100}%` }}
-                  aria-hidden
-                />
-              ))}
-            <span className="levels-progress-spark" aria-hidden />
+          <div className="levels-stars-head">
+            <span className="levels-stars-icon" aria-hidden>
+              ★
+            </span>
+            <div className="levels-stars-copy">
+              <strong>
+                {starsEarned} / {starsRequired} ★
+              </strong>
+              <span>
+                {starsGateMet
+                  ? nextSeason
+                    ? `Listo para ${seasonChipLabel(nextSeason)}`
+                    : 'Meta de temporada alcanzada'
+                  : nextSeason
+                    ? `Te faltan ${starsRemaining} ★ para ${seasonChipLabel(nextSeason)}`
+                    : `Te faltan ${starsRemaining} ★ para la siguiente temporada`}
+              </span>
+            </div>
+            <span className="levels-stars-badge" aria-hidden>
+              {starsGatePct}%
+            </span>
           </div>
-          <span className="levels-progress-label">
-            {completedCount}/{total} hechos
-            {progress.nextMilestone != null ? ` · Hito ${progress.nextMilestone}` : ''}
-          </span>
-        </div>
+          <div
+            className="levels-stars-track"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={starsRequired}
+            aria-valuenow={Math.min(starsEarned, starsRequired)}
+          >
+            <div className="levels-stars-bar" style={{ width: `${starsGatePct}%` }} />
+          </div>
+        </section>
       )}
 
-      {showPassBanner && season && pricing && (
+      {showPassBanner && season && (
         <button
           type="button"
           className="levels-pass-banner"
@@ -285,10 +428,8 @@ export default function LevelsScreen() {
           <span className="levels-pass-left">
             <CrownIcon />
             <span>
-              Pase: niveles premium de temporadas liberadas
-              {' · '}
-              {pricing.onOffer && <s className="levels-pass-list">{formatClp(pricing.listClp)}</s>}{' '}
-              {formatClp(pricing.effectiveClp)}/mes
+              Juega niveles con contenido premium por tan solo {formatClp(PASS_MONTHLY_PRICE_CLP)} al
+              mes.
             </span>
           </span>
           <span className="levels-pass-chevron" aria-hidden>
@@ -297,7 +438,7 @@ export default function LevelsScreen() {
         </button>
       )}
 
-      {rhythm && (
+      {rhythm && !busy && (
         <div className="levels-rhythm" role="status">
           {rhythm.kind === 'drip' && (
             <p>
@@ -327,7 +468,7 @@ export default function LevelsScreen() {
         </div>
       )}
 
-      {showTeaser && nextSeason && (
+      {showTeaser && nextSeason && !busy && (
         <div className="levels-teaser" role="status">
           <strong>Pronto: {nextSeason.name}</strong>
           <span>
@@ -340,8 +481,8 @@ export default function LevelsScreen() {
         </div>
       )}
 
-      {loading && <p className="levels-msg">Cargando niveles…</p>}
-      {error && (
+      {busy && <p className="levels-msg">Cargando niveles…</p>}
+      {error && !busy && (
         <div className="levels-msg">
           <p className="levels-error">{error}</p>
           <button type="button" className="btn-ghost" onClick={() => void load()}>
@@ -350,7 +491,7 @@ export default function LevelsScreen() {
         </div>
       )}
 
-      {!loading && !error && (
+      {!busy && !error && (
         <ul className="levels-grid">
           {items.map((item, index) => {
             const { level, status, bestPct, bestTimeMs, attempts } = item;
@@ -418,9 +559,12 @@ export default function LevelsScreen() {
                     ) : (
                       <span className="level-play-badge">Jugar</span>
                     )}
-                    {attempts > 0 && status !== 'completed' && status !== 'gated' && status !== 'upcoming' && (
-                      <span className="level-tile-meta">{attempts} intentos</span>
-                    )}
+                    {attempts > 0 &&
+                      status !== 'completed' &&
+                      status !== 'gated' &&
+                      status !== 'upcoming' && (
+                        <span className="level-tile-meta">{attempts} intentos</span>
+                      )}
                   </span>
                 </button>
               </li>

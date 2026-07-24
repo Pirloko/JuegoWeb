@@ -4,7 +4,7 @@ import {
   fetchActiveSeason,
   fetchSeason,
   hasSeasonPass,
-  seasonPricing,
+  PASS_MONTHLY_PRICE_CLP,
   startPassCheckout,
   usesStaticPaymentLink,
 } from '@/services/supabase/seasons';
@@ -12,7 +12,7 @@ import { formatClp, MP_MANAGE_SUBSCRIPTION_URL } from '@/types/database';
 import type { SeasonRow } from '@/types/database';
 import './pass.css';
 
-/** Paywall del pase mensual único (precio de la temporada activa). */
+/** Paywall del pase mensual único. */
 export default function SeasonPassScreen() {
   const { seasonId: seasonIdParam } = useParams<{ seasonId?: string }>();
   const [params] = useSearchParams();
@@ -85,7 +85,6 @@ export default function SeasonPassScreen() {
 
   if (!season) return null;
 
-  const pricing = seasonPricing(season);
   const staticPay = usesStaticPaymentLink();
 
   return (
@@ -128,18 +127,8 @@ export default function SeasonPassScreen() {
       </ul>
 
       <div className="pass-price-block">
-        {pricing.onOffer && pricing.offerClp != null ? (
-          <>
-            <span className="pass-price-list">{formatClp(pricing.listClp)}/mes</span>
-            <span className="pass-price-now">{formatClp(pricing.effectiveClp)}</span>
-            <span className="pass-offer-tag">/ mes · Oferta</span>
-          </>
-        ) : (
-          <>
-            <span className="pass-price-now">{formatClp(pricing.effectiveClp)}</span>
-            <span className="pass-offer-tag">/ mes</span>
-          </>
-        )}
+        <span className="pass-price-now">{formatClp(PASS_MONTHLY_PRICE_CLP)}</span>
+        <span className="pass-offer-tag">/ mes</span>
       </div>
 
       {error && <p className="pass-error">{error}</p>}
@@ -152,7 +141,7 @@ export default function SeasonPassScreen() {
       >
         {checkoutLoading
           ? 'Redirigiendo…'
-          : `Suscribirme por ${formatClp(pricing.effectiveClp)}/mes`}
+          : `Suscribirme por ${formatClp(PASS_MONTHLY_PRICE_CLP)}/mes`}
       </button>
 
       <p className="pass-fine">

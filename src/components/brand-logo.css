@@ -1,36 +1,142 @@
 .brand-logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.45em;
   margin: 0;
-  line-height: 0;
+  line-height: 1;
+  width: auto;
+  max-width: 100%;
 }
 
-.brand-logo img {
+.brand-logo-mark {
   display: block;
-  width: 100%;
-  height: auto;
-  max-width: 100%;
+  flex-shrink: 0;
+  width: 1.55em;
+  height: 1.55em;
   object-fit: contain;
-  /* PNG recortado al contenido, fondo transparente (banda ~3.5:1) */
   user-select: none;
   -webkit-user-drag: none;
-  filter: drop-shadow(0 4px 18px rgba(139, 92, 246, 0.35));
+  filter: drop-shadow(0 4px 16px rgba(244, 114, 182, 0.45));
+}
+
+.brand-logo-word {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1em;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  /* Fallback sólido si el clip no aplica */
+  color: #c4b5fd;
+}
+
+.brand-logo-letter {
+  display: inline-block;
+  background: linear-gradient(
+    105deg,
+    #c4b5fd 0%,
+    #f472b6 32%,
+    #a78bfa 55%,
+    #67e8f9 88%,
+    #c4b5fd 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  will-change: transform, opacity, background-position;
 }
 
 .brand-logo--sm {
-  width: min(180px, 55vw);
+  font-size: clamp(1.05rem, 4.2vw, 1.25rem);
 }
 
 .brand-logo--md {
-  width: min(240px, 70vw);
+  font-size: clamp(1.35rem, 5.5vw, 1.7rem);
 }
 
 .brand-logo--lg {
-  width: min(300px, 80vw);
+  font-size: clamp(1.55rem, 6.2vw, 2rem);
 }
 
 .brand-logo--hero {
-  width: min(340px, 88vw);
+  font-size: clamp(1.75rem, 7vw, 2.35rem);
   margin-inline: auto;
+}
+
+/* Entrada escalonada + shimmer continuo en letras */
+.brand-logo--animated .brand-logo-mark {
+  animation: brand-orb-in 0.7s var(--ease-out) both, brand-orb-glow 2.8s ease-in-out 0.7s infinite;
+}
+
+.brand-logo--animated .brand-logo-letter {
+  animation:
+    brand-letter-in 0.55s var(--ease-snap) both,
+    brand-letter-shimmer 3.6s linear infinite;
+  animation-delay:
+    calc(0.05s + var(--i) * 0.045s),
+    calc(0.9s + var(--i) * 0.08s);
+}
+
+@keyframes brand-letter-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.45em) scale(0.88);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes brand-letter-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 220% 50%;
+  }
+}
+
+@keyframes brand-orb-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7) rotate(-12deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes brand-orb-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 4px 14px rgba(244, 114, 182, 0.35));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 6px 22px rgba(103, 232, 249, 0.55));
+    transform: scale(1.04);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-logo--animated .brand-logo-mark,
+  .brand-logo--animated .brand-logo-letter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+    background-position: 40% 50%;
+  }
+
+  .brand-logo--animated .brand-logo-mark {
+    filter: drop-shadow(0 4px 16px rgba(244, 114, 182, 0.45));
+  }
 }

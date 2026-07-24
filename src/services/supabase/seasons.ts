@@ -2,6 +2,9 @@ import { getSupabase } from '@/services/supabase/client';
 import type { SeasonEntitlement, SeasonRow, SubscriptionRow } from '@/types/database';
 import { effectivePriceClp, isOfferActive } from '@/types/database';
 
+/** Precio mensual del pase (CLP). Fuente de verdad de marketing; checkout usa temporada en DB. */
+export const PASS_MONTHLY_PRICE_CLP = 1990;
+
 export async function fetchSeasons(): Promise<SeasonRow[]> {
   const { data, error } = await getSupabase()
     .from('seasons')

@@ -9,7 +9,7 @@ import {
   type SeasonWriteInput,
 } from '@/services/supabase/admin';
 import { useAuth } from '@/features/auth/auth-context';
-import { seasonPricing } from '@/services/supabase/seasons';
+import { seasonPricing, PASS_MONTHLY_PRICE_CLP } from '@/services/supabase/seasons';
 import { formatClp } from '@/types/database';
 import type { SeasonRow } from '@/types/database';
 import './admin.css';
@@ -19,18 +19,17 @@ function emptyForm(): SeasonWriteInput {
   const y = now.getUTCFullYear();
   const m = String(now.getUTCMonth() + 1).padStart(2, '0');
   const start = `${y}-${m}-01T00:00:00.000Z`;
-  const endMonth = now.getUTCMonth() + 2;
-  const endY = endMonth > 12 ? y + 1 : y;
-  const endM = String(((endMonth - 1) % 12) + 1).padStart(2, '0');
+  const endM = String(((now.getUTCMonth() + 1) % 12) + 1).padStart(2, '0');
+  const endY = now.getUTCMonth() === 11 ? y + 1 : y;
   return {
     slug: `${y}-${m}`,
     name: now.toLocaleString('es-CL', { month: 'long', year: 'numeric' }),
     starts_at: start,
     ends_at: `${endY}-${endM}-01T00:00:00.000Z`,
-    price_clp: 5990,
-    offer_price_clp: 3590,
-    offer_starts_at: start,
-    offer_ends_at: `${y}-${m}-15T00:00:00.000Z`,
+    price_clp: PASS_MONTHLY_PRICE_CLP,
+    offer_price_clp: null,
+    offer_starts_at: null,
+    offer_ends_at: null,
     is_active: true,
     stars_required_to_unlock_next: 20,
   };
@@ -124,7 +123,7 @@ export default function AdminSeasonsScreen() {
     setGrantMsg(null);
     try {
       const s = seasons.find((x) => x.id === grantSeasonId);
-      const amount = s ? seasonPricing(s).effectiveClp : 3590;
+      const amount = s ? seasonPricing(s).effectiveClp : PASS_MONTHLY_PRICE_CLP;
       await adminGrantSeasonPass(user.id, grantSeasonId, amount);
       setGrantMsg('Pase otorgado a tu cuenta');
     } catch (e) {

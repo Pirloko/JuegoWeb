@@ -6,7 +6,10 @@ export interface AuthContextValue {
   user: User | null;
   loading: boolean;
   configured: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signIn: (
+    email: string,
+    password: string,
+  ) => Promise<{ error: string | null; user: User | null }>;
   signUp: (
     email: string,
     password: string,

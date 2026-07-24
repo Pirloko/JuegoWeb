@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import BrandLogo from '@/components/BrandLogo';
+import { isAdminUser } from '@/features/admin/isAdmin';
 import { useAuth } from './auth-context';
 import '../legal/legal.css';
 import './auth.css';
 
 export default function LoginScreen() {
-  const { signIn, session, loading, configured } = useAuth();
+  const { signIn, session, user, loading, configured } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
@@ -17,7 +18,8 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && session) {
-    return <Navigate to={from} replace />;
+    const dest = isAdminUser(user) ? '/admin' : from === '/admin' && !isAdminUser(user) ? '/' : from;
+    return <Navigate to={dest} replace />;
   }
 
   if (!configured) {
@@ -32,13 +34,13 @@ export default function LoginScreen() {
     e.preventDefault();
     setError(null);
     setSubmitting(true);
-    const { error: msg } = await signIn(email.trim(), password);
+    const { error: msg, user: signed } = await signIn(email.trim(), password);
     setSubmitting(false);
     if (msg) {
       setError(msg);
       return;
     }
-    navigate(from, { replace: true });
+    navigate(isAdminUser(signed) ? '/admin' : from === '/admin' ? '/' : from, { replace: true });
   }
 
   return (

@@ -68,6 +68,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .home-identity {
@@ -124,9 +125,10 @@
 /* Hero card — glow + flare como el mockup */
 .home-hero-card {
   position: relative;
+  flex-shrink: 0;
   overflow: hidden;
   text-align: center;
-  padding: 28px 20px 22px;
+  padding: 28px 20px 24px;
   border-radius: 28px;
   border: 1px solid rgba(139, 92, 246, 0.55);
   background:
@@ -173,7 +175,6 @@
 .home-hero-card .brand-logo {
   position: relative;
   z-index: 1;
-  width: min(250px, 72vw);
   margin: 0 auto 10px;
 }
 
@@ -245,8 +246,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 50px;
-  padding: 0 16px;
+  min-height: 56px;
+  padding: 10px 16px;
   border-radius: 14px;
   border: 1.5px solid rgba(168, 85, 247, 0.65);
   background: rgba(10, 12, 28, 0.55);
@@ -255,20 +256,31 @@
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  box-sizing: border-box;
+}
+
+.home-pass-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  text-align: left;
 }
 
 .home-pass-sub {
   display: block;
-  margin-top: 2px;
   font-size: 0.75rem;
   font-weight: 500;
   color: var(--text-muted);
+  line-height: 1.2;
 }
 
 .home-pass-left {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .home-pass-left svg {
@@ -303,6 +315,7 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .home-menu-item {
