@@ -107,7 +107,7 @@ Modelo objetivo:
 
 - Ideal: no soltar el 100% el día 1 (goteo 2–3×/semana) + caza de 3★ + teaser T+1.
 - **Implementado (Fase 8):** `levels.available_at` (admin); tiles “Pronto”; banner de ritmo;
-  teaser T+1 en los últimos 7 días de `ends_at`.
+  teaser T+1 en los últimos 7 días antes del `starts_at` de la siguiente.
 - Always-on sin goteo: dejar `available_at` null y perfeccionar ★ / colección.
 
 ---
@@ -269,7 +269,7 @@ Sin pase: se pierde 1 corazón al fallar (enemigo o tiempo).
 - [x] Migración `00031_level_available_at.sql` + enforce en `begin_level_attempt` / `complete_level`.
 - [x] Admin: campo “Disponible desde” (vacío = ya).
 - [x] Tiles `upcoming` + banner de ritmo (drip / 3★ / al día).
-- [x] Teaser T+1 en home y niveles (ventana 7 días antes de `ends_at`).
+- [x] Teaser T+1 en home y niveles (ventana 7 días antes del inicio de T+1).
 - [x] Helpers + tests en `progression.ts`.
 - [x] `npm run build` verde.
 - [x] Migración en remoto.

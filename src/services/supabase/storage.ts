@@ -29,20 +29,28 @@ export function localLevelImageUrl(sortOrder: number): string {
   return LOCKED_LEVEL_PLACEHOLDER;
 }
 
+/**
+ * Variantes de extensión del mismo archivo. Los candidatos legacy
+ * `level-{sortOrder}/…` solo se prueban si la ruta ya usa esa convención:
+ * con varias temporadas ese nombre se repite y traería la foto de otra.
+ */
 function candidatePaths(imagePath: string, sortOrder: number): string[] {
   const isThumb = /thumb/i.test(imagePath);
-  const base = `level-${sortOrder}/${isThumb ? 'thumb' : 'full'}`;
-  return [
-    ...new Set(
-      [
-        imagePath.replace(/\.png$/i, '.webp').replace(/\.jpe?g$/i, '.webp'),
-        `${base}.webp`,
-        imagePath,
-        `${base}.png`,
-        imagePath.replace(/\.webp$/i, '.png'),
-      ].filter(Boolean),
-    ),
+  const folder = imagePath.includes('/') ? imagePath.split('/')[0]! : '';
+  const isLegacyFolder = folder === '' || folder === `level-${sortOrder}`;
+
+  const candidates = [
+    imagePath.replace(/\.png$/i, '.webp').replace(/\.jpe?g$/i, '.webp'),
+    imagePath,
+    imagePath.replace(/\.webp$/i, '.png'),
   ];
+
+  if (isLegacyFolder) {
+    const base = `level-${sortOrder}/${isThumb ? 'thumb' : 'full'}`;
+    candidates.push(`${base}.webp`, `${base}.png`);
+  }
+
+  return [...new Set(candidates.filter(Boolean))];
 }
 
 /**

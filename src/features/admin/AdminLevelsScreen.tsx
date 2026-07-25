@@ -81,6 +81,12 @@ export default function AdminLevelsScreen() {
       </header>
 
       <div className="admin-toolbar">
+        <Link
+          className="btn-ghost admin-link"
+          to={`/admin/niveles/lote${seasonId ? `?season=${seasonId}` : ''}`}
+        >
+          Crear en lote
+        </Link>
         <Link className="btn-ghost admin-link" to="/admin/seasons">
           Temporadas
         </Link>

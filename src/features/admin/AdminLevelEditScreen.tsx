@@ -1,21 +1,54 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import type { LevelConfigJson, LevelMediaType, SeasonRow } from '@/types/database';
-import type { PowerUpConfig } from '@/types/level';
+import type { EnemyConfig, PowerUpConfig } from '@/types/level';
 import {
   createLevel,
   defaultLevelConfig,
   fetchAllLevelsAdmin,
   fetchLevelAdmin,
   fetchSeasonsAdmin,
-  pathsForSortOrder,
+  findLevelByImageSha256,
+  formatImageDuplicate,
+  pathsForLevel,
   updateLevel,
   uploadLevelImage,
   uploadLevelMedia,
 } from '@/services/supabase/admin';
+import { configForSeasonSlot, describeSlot } from '@/features/progression/levelCurve';
 import { formatBytes, prepareLevelImage } from '@/services/images/prepareLevelImage';
 import { prepareLevelMedia } from '@/services/images/prepareLevelMedia';
+import { sha256Hex } from '@/services/images/sha256';
+import {
+  createSignedImageUrl,
+  resolveCompletedImageUrl,
+} from '@/services/supabase/storage';
 import './admin.css';
+
+/** Object URL local; se revoca al cambiar el archivo o al desmontar. */
+function useObjectUrl(file: File | null): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) {
+      setUrl(null);
+      return;
+    }
+    const next = URL.createObjectURL(file);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [file]);
+  return url;
+}
+
+/** Los `chasers` últimos enemigos persiguen mientras el jugador traza. */
+function buildEnemies(count: number, speed: number, chasers: number): EnemyConfig[] {
+  const total = Math.max(1, count);
+  const chase = Math.min(Math.max(0, chasers), total);
+  return Array.from({ length: total }, (_, i) => ({
+    type: i >= total - chase ? 'chase' : 'basic',
+    speed,
+  }));
+}
 
 /** ISO → valor para input datetime-local (hora local). */
 function isoToLocalInput(iso: string | null | undefined): string {
@@ -139,15 +172,27 @@ export default function AdminLevelEditScreen() {
   const [thumbFile, setThumbFile] = useState<File | null>(null);
   const [existingImagePath, setExistingImagePath] = useState<string | null>(null);
   const [existingThumbPath, setExistingThumbPath] = useState<string | null>(null);
+  const [existingImageSha, setExistingImageSha] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<LevelMediaType>('image');
   const [requiresPass, setRequiresPass] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [existingMediaPath, setExistingMediaPath] = useState<string | null>(null);
+  const [remoteImageUrl, setRemoteImageUrl] = useState<string | null>(null);
+  const [remoteThumbUrl, setRemoteThumbUrl] = useState<string | null>(null);
+  const [remoteMediaUrl, setRemoteMediaUrl] = useState<string | null>(null);
   const [sourceUrl, setSourceUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  const localImageUrl = useObjectUrl(fullFile);
+  const localThumbUrl = useObjectUrl(thumbFile);
+  const localMediaUrl = useObjectUrl(mediaFile);
+
+  const imagePreviewUrl = localImageUrl ?? remoteImageUrl;
+  const thumbPreviewUrl = localThumbUrl ?? remoteThumbUrl;
+  const mediaPreviewUrl = localMediaUrl ?? remoteMediaUrl;
 
   useEffect(() => {
     let cancelled = false;
@@ -174,7 +219,10 @@ export default function AdminLevelEditScreen() {
       try {
         const all = await fetchAllLevelsAdmin(seasonId);
         const max = all.reduce((m, l) => Math.max(m, l.sort_order), 0);
-        setSortOrder(max + 1);
+        const next = max + 1;
+        setSortOrder(next);
+        // Nivel nuevo: arranca con la dificultad que le toca a ese puesto.
+        setConfig(configForSeasonSlot(next));
       } catch {
         /* ignore */
       }
@@ -200,6 +248,7 @@ export default function AdminLevelEditScreen() {
         setSeasonId(row.season_id);
         setExistingImagePath(row.image_path);
         setExistingThumbPath(row.thumb_path);
+        setExistingImageSha(row.image_sha256 ?? null);
         setMediaType(row.media_type ?? 'image');
         setRequiresPass(Boolean(row.requires_pass));
         setExistingMediaPath(row.media_path ?? null);
@@ -215,6 +264,49 @@ export default function AdminLevelEditScreen() {
       cancelled = true;
     };
   }, [isNew, levelId]);
+
+  // Vista previa de foto / miniatura / GIF·video ya guardados en Storage.
+  useEffect(() => {
+    if (fullFile || !existingImagePath) {
+      setRemoteImageUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void resolveCompletedImageUrl(existingImagePath, sortOrder).then((url) => {
+      if (!cancelled) setRemoteImageUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [fullFile, existingImagePath, sortOrder]);
+
+  useEffect(() => {
+    if (thumbFile || !existingThumbPath) {
+      setRemoteThumbUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void resolveCompletedImageUrl(existingThumbPath, sortOrder).then((url) => {
+      if (!cancelled) setRemoteThumbUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [thumbFile, existingThumbPath, sortOrder]);
+
+  useEffect(() => {
+    if (mediaFile || mediaType === 'image' || !existingMediaPath) {
+      setRemoteMediaUrl(null);
+      return;
+    }
+    let cancelled = false;
+    void createSignedImageUrl(existingMediaPath).then((url) => {
+      if (!cancelled) setRemoteMediaUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mediaFile, mediaType, existingMediaPath]);
 
   function patchConfig(partial: Partial<LevelConfigJson>) {
     setConfig((c) => ({ ...c, ...partial }));
@@ -238,7 +330,10 @@ export default function AdminLevelEditScreen() {
         throw new Error('El link de origen debe empezar con http(s)://');
       }
 
-      const defaultPaths = pathsForSortOrder(sortOrder);
+      const season = seasons.find((s) => s.id === seasonId);
+      if (!season) throw new Error('Temporada no encontrada');
+
+      const defaultPaths = pathsForLevel(season.slug, sortOrder);
       const compressNotes: string[] = [];
 
       // Foto fija siempre obligatoria: es el fondo que se revela en partida.
@@ -256,7 +351,7 @@ export default function AdminLevelEditScreen() {
       } else if (mediaFile) {
         setInfo('Validando media…');
         const prepared = await prepareLevelMedia(mediaFile, mediaType);
-        mediaPath = `level-${sortOrder}/media.${prepared.ext}`;
+        mediaPath = `${defaultPaths.folder}/media.${prepared.ext}`;
         setInfo('Subiendo media…');
         await uploadLevelMedia(mediaPath, prepared.file, prepared.contentType);
       } else if (!mediaPath) {
@@ -276,10 +371,21 @@ export default function AdminLevelEditScreen() {
 
       let imagePath = existingImagePath ?? defaultPaths.image_path;
       let thumbPath = existingThumbPath ?? defaultPaths.thumb_path;
+      let imageSha = existingImageSha;
 
       if (fullFile) {
+        setInfo('Comprobando si la foto ya existe…');
+        imageSha = await sha256Hex(fullFile);
+        const dup = await findLevelByImageSha256(imageSha, isNew ? undefined : levelId);
+        if (dup) throw new Error(formatImageDuplicate(dup));
+
         imagePath = await uploadPrepared('full', fullFile, defaultPaths.image_path);
       }
+
+      if (!imageSha) {
+        throw new Error('Sube la imagen del nivel (hace falta para evitar duplicados)');
+      }
+
       if (thumbFile) {
         thumbPath = await uploadPrepared('thumb', thumbFile, defaultPaths.thumb_path);
       } else if (fullFile && (isNew || !existingThumbPath)) {
@@ -299,6 +405,7 @@ export default function AdminLevelEditScreen() {
         source_url: sourceUrl.trim() || null,
         available_at: localInputToIso(availableAtLocal),
         requires_pass: requiresPass,
+        image_sha256: imageSha,
       };
 
       setInfo('Guardando nivel…');
@@ -306,6 +413,7 @@ export default function AdminLevelEditScreen() {
 
       setExistingImagePath(imagePath);
       setExistingThumbPath(thumbPath);
+      setExistingImageSha(imageSha);
       setExistingMediaPath(mediaPath);
       setFullFile(null);
       setThumbFile(null);
@@ -327,6 +435,7 @@ export default function AdminLevelEditScreen() {
 
   const enemyCount = config.enemies?.length ?? 0;
   const enemySpeed = config.enemies?.[0]?.speed ?? 200;
+  const chaserCount = (config.enemies ?? []).filter((e) => e.type === 'chase').length;
 
   return (
     <main className="admin admin-level-form">
@@ -454,6 +563,16 @@ export default function AdminLevelEditScreen() {
             Cronómetro: <strong>120</strong> es el default. Pon <strong>0</strong> para jugar sin
             límite de tiempo.
           </p>
+          <button
+            type="button"
+            className="btn-ghost admin-curve-btn"
+            onClick={() => setConfig(configForSeasonSlot(sortOrder))}
+          >
+            Aplicar curva del nivel {sortOrder}
+          </button>
+          <p className="admin-hint">
+            La curva iguala la dificultad entre temporadas: {describeSlot(sortOrder)}.
+          </p>
         </fieldset>
 
         {/* —— Enemigos —— */}
@@ -469,10 +588,7 @@ export default function AdminLevelEditScreen() {
                 value={enemyCount || 1}
                 onChange={(e) => {
                   const n = Math.max(1, Number(e.target.value));
-                  const speed = config.enemies?.[0]?.speed ?? 200;
-                  patchConfig({
-                    enemies: Array.from({ length: n }, () => ({ type: 'basic', speed })),
-                  });
+                  patchConfig({ enemies: buildEnemies(n, enemySpeed, chaserCount) });
                 }}
               />
             </label>
@@ -484,15 +600,31 @@ export default function AdminLevelEditScreen() {
                 max={400}
                 value={enemySpeed}
                 onChange={(e) => {
-                  const speed = Number(e.target.value);
-                  const n = config.enemies?.length || 1;
                   patchConfig({
-                    enemies: Array.from({ length: n }, () => ({ type: 'basic', speed })),
+                    enemies: buildEnemies(enemyCount || 1, Number(e.target.value), chaserCount),
                   });
                 }}
               />
             </label>
           </div>
+          <label className="admin-field">
+            <span>Persiguen al jugador</span>
+            <input
+              type="number"
+              min={0}
+              max={enemyCount || 1}
+              value={chaserCount}
+              onChange={(e) => {
+                patchConfig({
+                  enemies: buildEnemies(enemyCount || 1, enemySpeed, Number(e.target.value)),
+                });
+              }}
+            />
+          </label>
+          <p className="admin-hint">
+            Los perseguidores solo cazan <strong>mientras el jugador está trazando</strong>. En zona
+            segura vuelven a rebotar. Se ven con aura roja.
+          </p>
         </fieldset>
 
         {/* —— Power-ups —— */}
@@ -527,6 +659,60 @@ export default function AdminLevelEditScreen() {
             <strong>foto fija</strong>; el GIF/video solo se ve después, en el resultado y la
             galería.
           </p>
+
+          <div className="admin-media-preview" aria-live="polite">
+            <div className="admin-media-preview-main">
+              {mediaType === 'video' && mediaPreviewUrl ? (
+                <video
+                  key={mediaPreviewUrl}
+                  className="admin-media-preview-asset"
+                  src={mediaPreviewUrl}
+                  poster={imagePreviewUrl ?? undefined}
+                  controls
+                  playsInline
+                  muted
+                  loop
+                />
+              ) : mediaType === 'gif' && mediaPreviewUrl ? (
+                <img
+                  key={mediaPreviewUrl}
+                  className="admin-media-preview-asset"
+                  src={mediaPreviewUrl}
+                  alt="Vista previa del GIF"
+                />
+              ) : imagePreviewUrl ? (
+                <img
+                  key={imagePreviewUrl}
+                  className="admin-media-preview-asset"
+                  src={imagePreviewUrl}
+                  alt="Vista previa de la foto del nivel"
+                />
+              ) : (
+                <p className="admin-media-preview-empty">
+                  {isNew
+                    ? 'Sube una foto (y GIF/video si aplica) para verla aquí'
+                    : 'Sin media cargada o sin acceso a Storage'}
+                </p>
+              )}
+            </div>
+            {thumbPreviewUrl && (
+              <div className="admin-media-preview-thumb">
+                <span>Miniatura</span>
+                <img src={thumbPreviewUrl} alt="Miniatura del nivel" />
+              </div>
+            )}
+            <p className="admin-media-preview-caption">
+              {mediaType === 'image' && 'Vista previa · foto del nivel'}
+              {mediaType === 'gif' &&
+                (mediaPreviewUrl
+                  ? 'Vista previa · GIF (premio)'
+                  : 'Vista previa · foto de partida (falta el GIF)')}
+              {mediaType === 'video' &&
+                (mediaPreviewUrl
+                  ? 'Vista previa · video (premio)'
+                  : 'Vista previa · foto de partida (falta el video)')}
+            </p>
+          </div>
 
           <div className="admin-media-type" role="group" aria-label="Tipo de contenido">
             {(
@@ -603,8 +789,8 @@ export default function AdminLevelEditScreen() {
           </label>
           <p className="admin-hint">
             {mediaType === 'image'
-              ? 'PNG/JPEG/WebP hasta 15 MB (se comprime sola). Es lo que se revela al conquistar.'
-              : 'Frame o portada del GIF/video. Obligatoria: es lo único que se ve mientras se juega (sin movimiento). PNG/JPEG/WebP hasta 15 MB.'}
+              ? 'PNG/JPEG/WebP hasta 15 MB (se comprime sola). Es lo que se revela al conquistar. No se puede repetir la misma foto en otro nivel.'
+              : 'Frame o portada del GIF/video. Obligatoria: es lo único que se ve mientras se juega (sin movimiento). PNG/JPEG/WebP hasta 15 MB. No se puede repetir la misma foto en otro nivel.'}
             {existingImagePath ? ` · Actual: ${existingImagePath}` : ''}
           </p>
           {fullFile && <p className="admin-ok">{fullFile.name}</p>}

@@ -4,6 +4,7 @@ import {
   adminGrantEnergyPack,
   adminGrantSeasonPass,
   createSeason,
+  deleteSeason,
   fetchSeasonsAdmin,
   updateSeason,
   type SeasonWriteInput,
@@ -19,13 +20,10 @@ function emptyForm(): SeasonWriteInput {
   const y = now.getUTCFullYear();
   const m = String(now.getUTCMonth() + 1).padStart(2, '0');
   const start = `${y}-${m}-01T00:00:00.000Z`;
-  const endM = String(((now.getUTCMonth() + 1) % 12) + 1).padStart(2, '0');
-  const endY = now.getUTCMonth() === 11 ? y + 1 : y;
   return {
     slug: `${y}-${m}`,
     name: now.toLocaleString('es-CL', { month: 'long', year: 'numeric' }),
     starts_at: start,
-    ends_at: `${endY}-${endM}-01T00:00:00.000Z`,
     price_clp: PASS_MONTHLY_PRICE_CLP,
     offer_price_clp: null,
     offer_starts_at: null,
@@ -53,6 +51,7 @@ export default function AdminSeasonsScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<SeasonWriteInput>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [grantSeasonId, setGrantSeasonId] = useState('');
   const [grantMsg, setGrantMsg] = useState<string | null>(null);
 
@@ -83,7 +82,6 @@ export default function AdminSeasonsScreen() {
       slug: s.slug,
       name: s.name,
       starts_at: s.starts_at,
-      ends_at: s.ends_at,
       price_clp: s.price_clp,
       offer_price_clp: s.offer_price_clp,
       offer_starts_at: s.offer_starts_at,
@@ -115,6 +113,28 @@ export default function AdminSeasonsScreen() {
       setError(err instanceof Error ? err.message : 'Error al guardar');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function onDelete(s: SeasonRow) {
+    const ok = confirm(
+      `¿Eliminar «${s.name}»?\n\nSe borrarán también todos sus niveles y pases de esa temporada. No se puede deshacer.`,
+    );
+    if (!ok) return;
+    setDeletingId(s.id);
+    setError(null);
+    try {
+      await deleteSeason(s.id);
+      if (editingId === s.id) {
+        setEditingId(null);
+        setForm(emptyForm());
+      }
+      if (grantSeasonId === s.id) setGrantSeasonId('');
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo eliminar');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -176,30 +196,21 @@ export default function AdminSeasonsScreen() {
             required
           />
         </label>
-        <div className="admin-row-fields">
-          <label className="admin-field">
-            <span>Inicio</span>
-            <input
-              type="datetime-local"
-              value={toLocalInput(form.starts_at)}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, starts_at: fromLocalInput(e.target.value) ?? f.starts_at }))
-              }
-              required
-            />
-          </label>
-          <label className="admin-field">
-            <span>Fin</span>
-            <input
-              type="datetime-local"
-              value={toLocalInput(form.ends_at)}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, ends_at: fromLocalInput(e.target.value) ?? f.ends_at }))
-              }
-              required
-            />
-          </label>
-        </div>
+        <label className="admin-field">
+          <span>Fecha de inicio</span>
+          <input
+            type="datetime-local"
+            value={toLocalInput(form.starts_at)}
+            onChange={(e) =>
+              setForm((f) => ({ ...f, starts_at: fromLocalInput(e.target.value) ?? f.starts_at }))
+            }
+            required
+          />
+        </label>
+        <p className="admin-hint">
+          Sin fecha de fin. La temporada vigente es la activa con inicio más reciente ya llegado.
+          Al crear la siguiente, esa pasa a ser la nueva vigente.
+        </p>
         <div className="admin-row-fields">
           <label className="admin-field">
             <span>Precio lista CLP</span>
@@ -284,6 +295,11 @@ export default function AdminSeasonsScreen() {
       <ul className="admin-list">
         {seasons.map((s) => {
           const p = seasonPricing(s);
+          const startLabel = new Date(s.starts_at).toLocaleDateString('es-CL', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          });
           return (
             <li key={s.id} className="admin-row">
               <button type="button" className="admin-row-main" onClick={() => startEdit(s)}>
@@ -291,10 +307,20 @@ export default function AdminSeasonsScreen() {
                 <span className="admin-row-meta">
                   <strong>{s.name}</strong>
                   <span>
-                    {s.is_active ? 'Activa' : 'Inactiva'} · {formatClp(p.effectiveClp)}
+                    {s.is_active ? 'Activa' : 'Inactiva'} · desde {startLabel} ·{' '}
+                    {formatClp(p.effectiveClp)}
                     {p.onOffer ? ' oferta' : ''} · gate {s.stars_required_to_unlock_next ?? 0}★
                   </span>
                 </span>
+              </button>
+              <button
+                type="button"
+                className="admin-row-del"
+                disabled={deletingId === s.id}
+                onClick={() => void onDelete(s)}
+                aria-label={`Eliminar ${s.name}`}
+              >
+                {deletingId === s.id ? '…' : '✕'}
               </button>
             </li>
           );

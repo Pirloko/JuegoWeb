@@ -69,13 +69,29 @@ Los marcados con (test) están cubiertos por `TerritorySystem.test.ts`.
 
 ## Enemigos
 
-Entidad base `Enemy` con: posición, velocidad, patrón de movimiento, tipo,
-vida, daño, estado. Fase 2: un solo tipo (`BasicEnemy`, rebote diagonal dentro
-del área `FREE`). La jerarquía (Fast/Heavy/Chaser/Boss) llega después; la base
-solo define la interfaz (`update`, `onPowerUpHit`, `gridPosition`).
+Entidad `Enemy` con dos comportamientos (`EnemyConfig.type`, en la config del
+nivel):
+
+- `basic` — rebote diagonal dentro del área `FREE` (Qix clásico).
+- `chase` — rebota igual, pero **mientras el jugador tiene trazo abierto** gira
+  hacia él para cortarlo. En zona segura vuelve al rebote: el respiro se
+  mantiene. Giro limitado (`CHASE_TURN_RATE`) para que se pueda esquivar, y
+  tras rebotar en un muro deja de corregir un instante para no vibrar contra el
+  borde. Se distingue por su aura roja.
 
 Restricción clave: los enemigos solo se mueven por celdas `FREE` — el
 territorio conquistado los encierra progresivamente.
+
+## Curva de dificultad por temporada
+
+`src/features/progression/levelCurve.ts` decide la config según el **puesto**
+del nivel dentro de su temporada, no según su contenido: el nivel 5 de Julio se
+siente como el 5 de Agosto. Sube meta de conquista, baja el cronómetro, suma
+enemigos hasta un tope de 7 (y perseguidores desde el 10) y estrena un
+power-up cada pocos slots.
+
+`SEASON_CURVE_SLOTS` (30) es solo el punto donde la curva llega a su tope; no
+hay límite de niveles por temporada — más allá se mantiene el tramo final.
 
 ## Revelado de imagen
 

@@ -95,7 +95,8 @@ Anti-cheat más fuerte (replay de inputs en Edge Function) queda fuera de v1.
 
 Migración `00009_seasons_and_entitlements.sql` + `00011_subscriptions.sql`:
 
-- `seasons` — precios CLP, oferta opcional, fechas,
+- `seasons` — precios CLP, oferta opcional, **solo `starts_at`** (00041:
+  sin fin fijo; vigente = activa con inicio más reciente ya llegado),
   `stars_required_to_unlock_next` (00025: ★ para liberar la siguiente;
   helpers `season_star_cap_free`, `season_countable_stars`,
   `can_access_season`; clamp anti soft-lock).
@@ -181,6 +182,16 @@ Ver plan y decisiones en `docs/GAMIFICACION_PLAN.md`.
   `media.*` (GIF/video). `can_read_level_image` (00027): thumbs para
   autenticados; poster si unlocked/completed; **media solo si completed**
   (la colección sigue visible sin pase activo).
+- Carpeta por nivel: `s-{slug-temporada}-level-{sort_order}/` (helper
+  `pathsForLevel`). `sort_order` reinicia en cada temporada, así que la
+  convención antigua `level-{n}/` hacía que el nivel 1 de Agosto pisara la foto
+  del 1 de Julio. La 00039 quitó esa regla global de `can_read_level_image`: el
+  acceso se autoriza por la carpeta del propio `image_path`, un solo segmento
+  para que no filtre la temporada entera. Los niveles antiguos siguen en
+  `level-{n}/` y quedan cubiertos por esa misma regla.
+- `levels.image_sha256` (00040) — SHA-256 del archivo original de la foto de
+  fondo. Índice único: la misma foto no se puede asignar a dos niveles (admin
+  bloquea en lote y en el editor antes de subir).
 - Imágenes de niveles bloqueados: bucket privado + signed URLs emitidas solo
   si el nivel está desbloqueado para el usuario (política por RPC/policy).
 - Thumbnails públicos con blur/candado para la galería.

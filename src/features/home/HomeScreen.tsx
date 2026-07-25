@@ -158,7 +158,7 @@ export default function HomeScreen() {
 
   const showPassCta = Boolean(season && !owned);
   const showTeaser = Boolean(
-    season && nextSeason && isSeasonTeaserWindow(season.ends_at),
+    season && nextSeason && isSeasonTeaserWindow(nextSeason.starts_at),
   );
 
   return (

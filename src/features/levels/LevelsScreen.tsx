@@ -283,7 +283,7 @@ export default function LevelsScreen() {
       targetPct: i.level.config.targetPct,
     })),
   );
-  const showTeaser = Boolean(season && nextSeason && isSeasonTeaserWindow(season.ends_at));
+  const showTeaser = Boolean(season && nextSeason && isSeasonTeaserWindow(nextSeason.starts_at));
   const busy = loading || loadingLevels;
 
   return (

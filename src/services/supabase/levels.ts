@@ -93,7 +93,7 @@ export async function fetchPlayableLevel(levelId: string): Promise<{
   const row = level as LevelRow;
   const owned = await hasSeasonPass(row.season_id);
   const needsPass = levelRequiresPass(row.requires_pass) && !owned;
-  let status: ProgressStatus = (progress as ProgressRow | null)?.status ?? 'locked';
+  const status: ProgressStatus = (progress as ProgressRow | null)?.status ?? 'locked';
 
   if (!isLevelReleased(row.available_at) && status !== 'completed') {
     return {

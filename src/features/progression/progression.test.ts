@@ -215,18 +215,19 @@ describe('isLevelReleased', () => {
 });
 
 describe('isSeasonTeaserWindow', () => {
-  const ends = '2026-07-31T00:00:00.000Z';
+  /** Inicio de la siguiente temporada (antes: se usaba ends_at de la actual). */
+  const nextStarts = '2026-07-31T00:00:00.000Z';
 
   it('fuera de ventana', () => {
-    expect(isSeasonTeaserWindow(ends, Date.parse('2026-07-10T00:00:00.000Z'))).toBe(false);
+    expect(isSeasonTeaserWindow(nextStarts, Date.parse('2026-07-10T00:00:00.000Z'))).toBe(false);
   });
 
-  it('últimos 7 días', () => {
-    expect(isSeasonTeaserWindow(ends, Date.parse('2026-07-25T00:00:00.000Z'))).toBe(true);
+  it('últimos 7 días antes de T+1', () => {
+    expect(isSeasonTeaserWindow(nextStarts, Date.parse('2026-07-25T00:00:00.000Z'))).toBe(true);
   });
 
-  it('después de ends_at no', () => {
-    expect(isSeasonTeaserWindow(ends, Date.parse('2026-08-01T00:00:00.000Z'))).toBe(false);
+  it('cuando T+1 ya empezó no', () => {
+    expect(isSeasonTeaserWindow(nextStarts, Date.parse('2026-08-01T00:00:00.000Z'))).toBe(false);
   });
 });
 

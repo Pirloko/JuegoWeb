@@ -16,12 +16,12 @@ export async function fetchSeasons(): Promise<SeasonRow[]> {
 
 export async function fetchActiveSeason(): Promise<SeasonRow | null> {
   const now = new Date().toISOString();
+  // Sin ends_at: la vigente es la activa cuyo starts_at ya llegó (la más reciente).
   const { data, error } = await getSupabase()
     .from('seasons')
     .select('*')
     .eq('is_active', true)
     .lte('starts_at', now)
-    .gt('ends_at', now)
     .order('starts_at', { ascending: false })
     .limit(1)
     .maybeSingle();

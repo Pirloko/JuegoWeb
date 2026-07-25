@@ -10,7 +10,8 @@ export interface SeasonRow {
   slug: string;
   name: string;
   starts_at: string;
-  ends_at: string;
+  /** @deprecated Opcional/legacy; la temporada no tiene fin fijo. */
+  ends_at: string | null;
   price_clp: number;
   offer_price_clp: number | null;
   offer_starts_at: string | null;
@@ -80,6 +81,8 @@ export interface LevelRow {
   available_at: string | null;
   /** True = exige pase/membresía (admin). Independiente del media. */
   requires_pass: boolean;
+  /** SHA-256 hex de la foto de fondo (única entre niveles). */
+  image_sha256: string | null;
 }
 
 export interface LevelConfigJson {

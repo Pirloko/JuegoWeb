@@ -154,7 +154,7 @@ export function isSeasonStarGateMet(
   return countableStarsTowardSeasonGate(levels) >= starsRequiredToUnlockNext;
 }
 
-/** Días antes de ends_at en que se muestra teaser de T+1. */
+/** Días antes del inicio de T+1 en que se muestra el teaser. */
 export const SEASON_TEASER_DAYS = 7;
 
 /** Null o pasado = ya salió del goteo. */
@@ -168,16 +168,19 @@ export function isLevelReleased(
   return t <= now;
 }
 
-/** Últimos `days` de la temporada (antes de ends_at). */
+/**
+ * Ventana de teaser: últimos `days` antes de que empiece la siguiente temporada.
+ * `nextStartsAt` = starts_at de T+1.
+ */
 export function isSeasonTeaserWindow(
-  endsAt: string,
+  nextStartsAt: string,
   now = Date.now(),
   days = SEASON_TEASER_DAYS,
 ): boolean {
-  const end = new Date(endsAt).getTime();
-  if (!Number.isFinite(end)) return false;
-  const start = end - days * 24 * 60 * 60 * 1000;
-  return now >= start && now < end;
+  const next = new Date(nextStartsAt).getTime();
+  if (!Number.isFinite(next)) return false;
+  const windowStart = next - days * 24 * 60 * 60 * 1000;
+  return now >= windowStart && now < next;
 }
 
 export interface RhythmLevelInput {

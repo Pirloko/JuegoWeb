@@ -1,5 +1,12 @@
+/**
+ * `basic` rebota en diagonal (Qix clásico).
+ * `chase` rebota igual, pero mientras el jugador tiene un trazo abierto se
+ * gira hacia él para cortarlo.
+ */
+export type EnemyBehavior = 'basic' | 'chase';
+
 export interface EnemyConfig {
-  type: 'basic';
+  type: EnemyBehavior;
   speed: number;
 }
 

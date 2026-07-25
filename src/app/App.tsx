@@ -20,6 +20,7 @@ import HomeOrAdminRedirect from '@/features/admin/HomeOrAdminRedirect';
 import AdminDashboardScreen from '@/features/admin/AdminDashboardScreen';
 import AdminLevelsScreen from '@/features/admin/AdminLevelsScreen';
 import AdminLevelEditScreen from '@/features/admin/AdminLevelEditScreen';
+import AdminLevelsBulkScreen from '@/features/admin/AdminLevelsBulkScreen';
 import AdminSeasonsScreen from '@/features/admin/AdminSeasonsScreen';
 import AdminFriendSitesScreen from '@/features/admin/AdminFriendSitesScreen';
 import AdminSubscriptionsScreen from '@/features/admin/AdminSubscriptionsScreen';
@@ -130,6 +131,14 @@ export default function App() {
               element={
                 <RequireAdmin>
                   <AdminLevelsScreen />
+                </RequireAdmin>
+              }
+            />
+            <Route
+              path="/admin/niveles/lote"
+              element={
+                <RequireAdmin>
+                  <AdminLevelsBulkScreen />
                 </RequireAdmin>
               }
             />

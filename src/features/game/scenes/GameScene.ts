@@ -84,7 +84,16 @@ export class GameScene extends Phaser.Scene {
     this.level.enemies.forEach((enemyConfig, i) => {
       const fx = enemyCount === 1 ? 0.5 : 0.25 + (0.5 * i) / (enemyCount - 1);
       const fy = 0.3 + (i % 2) * 0.15;
-      this.enemies.push(new Enemy(this, GAME_WIDTH * fx, GAME_HEIGHT * fy, enemyConfig.speed, stateAtPixel));
+      this.enemies.push(
+        new Enemy(
+          this,
+          GAME_WIDTH * fx,
+          GAME_HEIGHT * fy,
+          enemyConfig.speed,
+          stateAtPixel,
+          enemyConfig.type,
+        ),
+      );
     });
 
     this.powerUps = new PowerUpSystem(this, this.level.powerUps, {
@@ -130,7 +139,10 @@ export class GameScene extends Phaser.Scene {
       if (this.finished) return;
     }
 
-    for (const enemy of this.enemies) enemy.update(delta);
+    // Los perseguidores solo cazan mientras hay trazo abierto: fuera de eso
+    // la zona segura sigue siendo un respiro.
+    const chaseTarget = this.territory.hasTrail ? { x: this.player.x, y: this.player.y } : null;
+    for (const enemy of this.enemies) enemy.update(delta, chaseTarget);
     this.checkEnemyCollisions(time);
     if (this.finished) return;
     this.powerUps.update(this.player.x, this.player.y);
